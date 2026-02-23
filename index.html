@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام توزيع مناديب رمضان - متعدد الفترات</title>
+    <title>نظام توزيع مناديب رمضان - واتساب</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         :root {
             --primary: #2c3e50;
             --accent: #27ae60;
+            --whatsapp: #25D366;
             --danger: #e74c3c;
             --light: #ecf0f1;
-            --pdf-btn: #e67e22;
         }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; margin: 0; padding: 20px; color: var(--primary); }
         .container { max-width: 1200px; margin: auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
@@ -20,44 +20,43 @@
         .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px; background: var(--light); padding: 15px; border-radius: 10px; }
         .input-group { display: flex; flex-direction: column; gap: 8px; }
         
-        button { padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        button { padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
         .btn-add { background: var(--accent); color: white; }
-        .btn-rotate { background: #2980b9; color: white; }
         .btn-random { background: #8e44ad; color: white; }
-        .btn-pdf { background: var(--pdf-btn); color: white; grid-column: span 2; }
-        button:hover { opacity: 0.8; transform: translateY(-2px); }
-
-        .shifts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
-        .shift-card { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 12px; min-height: 150px; }
+        .btn-pdf { background: #e67e22; color: white; grid-column: span 2; }
+        .btn-whatsapp { background: var(--whatsapp); color: white; padding: 4px 8px; font-size: 11px; }
+        
+        .shifts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px; }
+        .shift-card { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 12px; }
         .shift-header { font-weight: bold; background: var(--primary); color: white; padding: 8px; border-radius: 5px; margin-bottom: 10px; text-align: center; }
         
-        .delegate-item { display: flex; justify-content: space-between; align-items: center; background: #f9f9f9; padding: 8px; margin: 5px 0; border-right: 4px solid var(--accent); border-radius: 4px; border-left: 1px solid #eee; }
-        .delete-btn { color: var(--danger); cursor: pointer; font-size: 18px; border: none; background: none; }
+        .delegate-item { background: #f9f9f9; padding: 10px; margin: 8px 0; border-right: 4px solid var(--accent); border-radius: 4px; border-left: 1px solid #eee; }
+        .item-main { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .delegate-name { font-weight: bold; }
         
-        .checkbox-group { display: flex; flex-wrap: wrap; gap: 5px; font-size: 12px; margin-top: 5px; }
-        .checkbox-group label { background: #eee; padding: 2px 6px; border-radius: 3px; cursor: pointer; }
+        .checkbox-group { display: flex; flex-wrap: wrap; gap: 4px; }
+        .checkbox-group label { background: #eee; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; }
         
-        textarea { width: 100%; height: 60px; border-radius: 5px; padding: 8px; border: 1px solid #ccc; }
-        input[type="text"] { padding: 8px; border: 1px solid #ccc; border-radius: 5px; }
+        textarea, input[type="text"] { padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-family: inherit; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>🌙 نظام إدارة المناديب - فترات متعددة</h1>
+    <h1>🌙 نظام مناديب رمضان + إرسال واتساب</h1>
 
     <div class="controls">
         <div class="input-group">
-            <input type="text" id="delegateName" placeholder="اسم المندوب الجديد">
+            <input type="text" id="delegateName" placeholder="اسم المندوب">
+            <input type="text" id="delegatePhone" placeholder="رقم الواتساب (مثال: 9665xxxxx)">
             <button class="btn-add" onclick="addSingle()">➕ إضافة مندوب</button>
         </div>
         <div class="input-group">
-            <textarea id="bulkInput" placeholder="لصق مجموعة أسماء (كل اسم في سطر)..."></textarea>
+            <textarea id="bulkInput" placeholder="لصق (اسم المندوب، الرقم) كل واحد في سطر..."></textarea>
             <button class="btn-add" onclick="addBulk()">📋 إضافة القائمة</button>
         </div>
-        <button class="btn-rotate" onclick="rotateShifts()">🔄 تدوير دوري (شيفت واحد للأمام)</button>
-        <button class="btn-random" onclick="randomizeShifts()">🎲 توزيع عشوائي (2-5 لكل فترة)</button>
-        <button class="btn-pdf" onclick="downloadPDF()">📄 تصدير الجدول الكامل كـ PDF</button>
+        <button class="btn-random" onclick="randomizeShifts()">🎲 توزيع عشوائي عادل</button>
+        <button class="btn-pdf" onclick="downloadPDF()">📄 تصدير الجدول PDF</button>
     </div>
 
     <div class="shifts-grid" id="shiftsContainer"></div>
@@ -73,14 +72,13 @@
         { id: 6, time: "12:10 → 3:00" }
     ];
 
-    let allDelegates = JSON.parse(localStorage.getItem('delegates_v2')) || [];
+    let allDelegates = JSON.parse(localStorage.getItem('delegates_v3')) || [];
 
     function render() {
         const container = document.getElementById('shiftsContainer');
         container.innerHTML = '';
 
         shiftsConfig.forEach(shift => {
-            // تصفية المناديب الذين تنتمي هذه الفترة ضمن قائمة فتراتهم
             const delegatesInShift = allDelegates.filter(d => d.shiftIds.includes(shift.id));
             
             const card = document.createElement('div');
@@ -90,58 +88,75 @@
                 <div class="delegate-list">
                     ${delegatesInShift.map(d => `
                         <div class="delegate-item">
-                            <span>${d.name}</span>
-                            <div class="actions-div">
-                                <div class="checkbox-group">
-                                    ${shiftsConfig.map(s => `
-                                        <label style="background: ${d.shiftIds.includes(s.id) ? '#27ae60' : '#eee'}; color: ${d.shiftIds.includes(s.id) ? 'white' : 'black'}">
-                                            <input type="checkbox" style="display:none" onchange="toggleShift('${d.id}', ${s.id})" ${d.shiftIds.includes(s.id) ? 'checked' : ''}>
-                                            ${s.id}
-                                        </label>
-                                    `).join('')}
+                            <div class="item-main">
+                                <span class="delegate-name">${d.name}</span>
+                                <div style="display:flex; gap:5px;">
+                                    <button class="btn-whatsapp" onclick="sendWhatsApp('${d.id}', ${shift.id})">💬 واتساب</button>
+                                    <button style="background:none; color:red; cursor:pointer;" onclick="deleteDelegate('${d.id}')">×</button>
                                 </div>
-                                <button class="delete-btn" onclick="deleteDelegate('${d.id}')" title="حذف بالكامل">×</button>
+                            </div>
+                            <div class="checkbox-group">
+                                ${shiftsConfig.map(s => `
+                                    <label style="background: ${d.shiftIds.includes(s.id) ? '#27ae60' : '#eee'}; color: ${d.shiftIds.includes(s.id) ? 'white' : 'black'}">
+                                        <input type="checkbox" style="display:none" onchange="toggleShift('${d.id}', ${s.id})" ${d.shiftIds.includes(s.id) ? 'checked' : ''}>
+                                        ${s.id}
+                                    </label>
+                                `).join('')}
                             </div>
                         </div>
                     `).join('')}
                 </div>
-                <div style="margin-top:10px; font-weight:bold; font-size:12px; color: ${delegatesInShift.length < 2 || delegatesInShift.length > 5 ? 'var(--danger)' : 'var(--accent)'}">
-                    العدد: ${delegatesInShift.length}
-                </div>
             `;
             container.appendChild(card);
         });
-        localStorage.setItem('delegates_v2', JSON.stringify(allDelegates));
+        localStorage.setItem('delegates_v3', JSON.stringify(allDelegates));
     }
 
     function addSingle() {
         const name = document.getElementById('delegateName').value;
+        const phone = document.getElementById('delegatePhone').value;
         if (!name) return;
-        allDelegates.push({ id: Date.now().toString(), name: name, shiftIds: [1] });
+        allDelegates.push({ id: Date.now().toString(), name: name, phone: phone, shiftIds: [1] });
         document.getElementById('delegateName').value = '';
+        document.getElementById('delegatePhone').value = '';
         render();
     }
 
     function addBulk() {
         const raw = document.getElementById('bulkInput').value;
-        const names = raw.split('\n').filter(n => n.trim() !== "");
-        names.forEach(n => {
-            allDelegates.push({ id: Math.random().toString(36).substr(2, 9), name: n.trim(), shiftIds: [1] });
+        const lines = raw.split('\n').filter(l => l.trim() !== "");
+        lines.forEach(line => {
+            const parts = line.split(/[،,]/);
+            allDelegates.push({ 
+                id: Math.random().toString(36).substr(2, 9), 
+                name: parts[0].trim(), 
+                phone: parts[1] ? parts[1].trim() : "", 
+                shiftIds: [1] 
+            });
         });
         document.getElementById('bulkInput').value = '';
         render();
+    }
+
+    function sendWhatsApp(delegateId, currentShiftId) {
+        const delegate = allDelegates.find(d => d.id === delegateId);
+        const shift = shiftsConfig.find(s => s.id === currentShiftId);
+        
+        if (!delegate.phone) {
+            alert("يرجى إضافة رقم جوال لهذا المندوب أولاً");
+            return;
+        }
+
+        const message = `أهلاً ${delegate.name}، لديك مناوبة في الفترة رقم (${shift.id}) من الساعة ${shift.time}. بالتوفيق!`;
+        const url = `https://wa.me/${delegate.phone}?text=${encodeURIComponent(message)}`;
+        window.open(url, '_blank');
     }
 
     function toggleShift(delegateId, shiftId) {
         const delegate = allDelegates.find(d => d.id === delegateId);
         if (delegate) {
             if (delegate.shiftIds.includes(shiftId)) {
-                // إذا كانت الفترة موجودة يحذفها بشرط بقاء فترة واحدة على الأقل
-                if (delegate.shiftIds.length > 1) {
-                    delegate.shiftIds = delegate.shiftIds.filter(id => id !== shiftId);
-                } else {
-                    alert("يجب أن يبقى المندوب في فترة واحدة على الأقل");
-                }
+                if (delegate.shiftIds.length > 1) delegate.shiftIds = delegate.shiftIds.filter(id => id !== shiftId);
             } else {
                 delegate.shiftIds.push(shiftId);
             }
@@ -150,66 +165,25 @@
     }
 
     function deleteDelegate(id) {
-        if(confirm("هل أنت متأكد من حذف هذا المندوب من كافة الفترات؟")) {
+        if(confirm("حذف المندوب؟")) {
             allDelegates = allDelegates.filter(d => d.id !== id);
             render();
         }
     }
 
-    function rotateShifts() {
-        allDelegates.forEach(d => {
-            d.shiftIds = d.shiftIds.map(id => (id >= 6 ? 1 : id + 1));
-        });
-        render();
-    }
-
     function randomizeShifts() {
-        if (allDelegates.length < 12) {
-            alert("للتوزيع العادل، يفضل وجود 12 مندوب على الأقل.");
-        }
-        // تصفير الفترات وتوزيع مندوب واحد لكل فترة بشكل عشوائي لضمان التغطية
-        let shuffled = [...allDelegates].sort(() => Math.random() - 0.5);
-        shuffled.forEach((d, index) => {
-            d.shiftIds = [(index % 6) + 1];
-        });
+        allDelegates.forEach((d, index) => { d.shiftIds = [(index % 6) + 1]; });
         render();
     }
 
     function downloadPDF() {
-        const element = document.getElementById('shiftsContainer');
-        const clone = element.cloneNode(true);
-        
-        // إخفاء أدوات التحكم (الأزرار والتشيك بوكس) في الـ PDF
-        clone.querySelectorAll('.actions-div').forEach(el => {
-            // نبقي فقط على أرقام الفترات التي ينتمي إليها المندوب كعلامات نصية
-            const activeShifts = Array.from(el.querySelectorAll('input:checked')).map(i => i.parentElement.innerText.trim());
-            el.innerHTML = '<small>فترات المندوب: ' + activeShifts.join('، ') + '</small>';
-        });
-
-        const wrapper = document.createElement('div');
-        wrapper.style.padding = "20px";
-        wrapper.style.direction = "rtl";
-        
-        const header = `
-            <h2 style="text-align:center; color:#2c3e50;">جدول توزيع المناديب اليومي - رمضان 🌙</h2>
-            <p style="text-align:center; font-weight:bold;">تاريخ الإصدار: ${new Date().toLocaleDateString('ar-EG')}</p>
-            <hr>`;
-        
-        wrapper.innerHTML = header;
-        wrapper.appendChild(clone);
-
-        const opt = {
-            margin: 10,
-            filename: `مناوبات_رمضان_كاملة.pdf`,
-            html2canvas: { scale: 2 },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
-        };
-
-        html2pdf().set(opt).from(wrapper).save();
+        const opt = { margin: 10, filename: 'جدول_رمضان.pdf', html2canvas: { scale: 2 }, jsPDF: { orientation: 'landscape' } };
+        const clone = document.getElementById('shiftsContainer').cloneNode(true);
+        clone.querySelectorAll('button, input').forEach(el => el.remove());
+        html2pdf().set(opt).from(clone).save();
     }
 
     render();
 </script>
-
 </body>
 </html>
