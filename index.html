@@ -177,10 +177,46 @@
     }
 
     function downloadPDF() {
-        const opt = { margin: 10, filename: 'جدول_رمضان.pdf', html2canvas: { scale: 2 }, jsPDF: { orientation: 'landscape' } };
-        const clone = document.getElementById('shiftsContainer').cloneNode(true);
-        clone.querySelectorAll('button, input').forEach(el => el.remove());
-        html2pdf().set(opt).from(clone).save();
+        const opt = { 
+            margin: 10, 
+            filename: 'جدول_رمضان.pdf', 
+            html2canvas: { scale: 2 }, 
+            jsPDF: { orientation: 'landscape' },
+            pagebreak: { mode: ['css', 'legacy'] }
+        };
+
+        const pdfContainer = document.createElement('div');
+        pdfContainer.style.direction = 'rtl';
+        pdfContainer.style.padding = '10px';
+
+        const originalCards = document.querySelectorAll('.shift-card');
+
+        for (let i = 0; i < originalCards.length; i += 2) {
+            const pageDiv = document.createElement('div');
+            
+            pageDiv.style.display = 'grid';
+            pageDiv.style.gridTemplateColumns = '1fr 1fr';
+            pageDiv.style.gap = '15px';
+            pageDiv.style.width = '100%';
+            
+            if (i !== 0) {
+                pageDiv.style.pageBreakBefore = 'always';
+            }
+
+            const card1 = originalCards[i].cloneNode(true);
+            card1.querySelectorAll('button, input').forEach(el => el.remove());
+            pageDiv.appendChild(card1);
+
+            if (originalCards[i + 1]) {
+                const card2 = originalCards[i + 1].cloneNode(true);
+                card2.querySelectorAll('button, input').forEach(el => el.remove());
+                pageDiv.appendChild(card2);
+            }
+
+            pdfContainer.appendChild(pageDiv);
+        }
+
+        html2pdf().set(opt).from(pdfContainer).save();
     }
 
     render();
