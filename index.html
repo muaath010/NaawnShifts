@@ -227,72 +227,63 @@
             margin: 10, 
             filename: 'جدول_رمضان.pdf', 
             image: { type: 'jpeg', quality: 1 },
-            html2canvas: { 
-                scale: 2, 
-                useCORS: true, 
-                scrollY: 0, // 💡 التعديل الأهم: تصفير التمرير لمنع القص
-                windowHeight: document.documentElement.scrollHeight // إجبار المكتبة على قراءة كامل الطول
-            }, 
+            html2canvas: { scale: 2, useCORS: true }, 
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
             pagebreak: { mode: ['css', 'legacy'] }
         };
 
+        // إنشاء حاوية عادية غير مضافة للصفحة (لتفادي مشكلة الصفحة البيضاء)
         const pdfContainer = document.createElement('div');
-        // 💡 إضافة الحاوية بشكل حقيقي إلى الصفحة ولكن إخفائها خلف العناصر
-        pdfContainer.style.position = 'absolute';
-        pdfContainer.style.top = '0';
-        pdfContainer.style.left = '0';
-        pdfContainer.style.width = '280mm';
-        pdfContainer.style.zIndex = '-9999'; 
         pdfContainer.style.direction = 'rtl';
         pdfContainer.style.padding = '15px';
         pdfContainer.style.background = '#f4f7f6';
-        pdfContainer.style.color = '#2c3e50';
         pdfContainer.style.fontFamily = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
-        
-        document.body.appendChild(pdfContainer); // إضافتها لتأخذ طولاً حقيقياً
+        pdfContainer.style.width = '280mm'; // تحديد العرض بوضوح لمنع القص العرضي
 
         const originalCards = document.querySelectorAll('.shift-card:not(.exclude-from-pdf)');
 
         for (let i = 0; i < originalCards.length; i += 2) {
+            
             if (i !== 0) {
                 const pageBreak = document.createElement('div');
                 pageBreak.classList.add('html2pdf__page-break');
                 pdfContainer.appendChild(pageBreak);
             }
 
-            const pageDiv = document.createElement('div');
-            pageDiv.style.display = 'flex';
-            pageDiv.style.justifyContent = 'space-between';
-            pageDiv.style.gap = '20px';
-            pageDiv.style.marginBottom = '20px'; // لتفادي الالتصاق بأسفل الصفحة
+            const rowDiv = document.createElement('div');
+            // 💡 السر هنا: التخلص من Flexbox تماماً واستخدام البلوكات لتوافق أفضل مع PDF
+            rowDiv.style.display = 'block'; 
+            rowDiv.style.width = '100%';
+            rowDiv.style.marginBottom = '20px';
             
             const card1 = originalCards[i].cloneNode(true);
-            card1.style.flex = '1';
+            card1.style.display = 'inline-block';
             card1.style.width = '48%';
+            card1.style.verticalAlign = 'top';
             card1.style.boxSizing = 'border-box';
+            card1.style.margin = '0 1%';
             card1.querySelectorAll('button, input').forEach(el => el.remove());
-            pageDiv.appendChild(card1);
+            rowDiv.appendChild(card1);
 
             if (originalCards[i + 1]) {
                 const card2 = originalCards[i + 1].cloneNode(true);
-                card2.style.flex = '1';
+                card2.style.display = 'inline-block';
                 card2.style.width = '48%';
+                card2.style.verticalAlign = 'top';
                 card2.style.boxSizing = 'border-box';
+                card2.style.margin = '0 1%';
                 card2.querySelectorAll('button, input').forEach(el => el.remove());
-                pageDiv.appendChild(card2);
+                rowDiv.appendChild(card2);
             }
 
-            pdfContainer.appendChild(pageDiv);
+            pdfContainer.appendChild(rowDiv);
         }
 
         html2pdf().set(opt).from(pdfContainer).save().then(() => {
-            document.body.removeChild(pdfContainer); // تنظيف الصفحة بعد التصدير
             pdfBtn.innerHTML = originalText;
             pdfBtn.disabled = false;
         }).catch(err => {
             console.error("PDF Error: ", err);
-            if(document.body.contains(pdfContainer)) document.body.removeChild(pdfContainer);
             pdfBtn.innerHTML = originalText;
             pdfBtn.disabled = false;
             alert("حدث خطأ أثناء تصدير الملف.");
