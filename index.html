@@ -12,6 +12,7 @@
             --whatsapp: #25D366;
             --danger: #e74c3c;
             --light: #ecf0f1;
+            --warning: #f39c12;
         }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; margin: 0; padding: 20px; color: var(--primary); }
         .container { max-width: 1200px; margin: auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
@@ -79,6 +80,7 @@
         const container = document.getElementById('shiftsContainer');
         container.innerHTML = '';
 
+        // رسم الفترات العادية
         shiftsConfig.forEach(shift => {
             const delegatesInShift = allDelegates.filter(d => d.shiftIds.includes(shift.id));
             
@@ -110,6 +112,40 @@
             `;
             container.appendChild(card);
         });
+
+        // إضافة قسم مخصص للمناديب بدون فترة (قائمة الانتظار)
+        const unassignedDelegates = allDelegates.filter(d => d.shiftIds.length === 0);
+        
+        const unassignedCard = document.createElement('div');
+        unassignedCard.className = 'shift-card';
+        unassignedCard.style.border = '2px dashed var(--warning)';
+        unassignedCard.innerHTML = `
+            <div class="shift-header" style="background: var(--warning);">مناديب بدون فترة (انتظار)</div>
+            <div class="delegate-list">
+                ${unassignedDelegates.map(d => `
+                    <div class="delegate-item" style="border-right-color: var(--warning);">
+                        <div class="item-main">
+                            <span class="delegate-name">${d.name}</span>
+                            <div style="display:flex; gap:5px;">
+                                <button class="btn-whatsapp" onclick="sendWhatsApp('${d.id}', null)">💬 واتساب</button>
+                                <button style="background:none; color:red; cursor:pointer;" onclick="deleteDelegate('${d.id}')">×</button>
+                            </div>
+                        </div>
+                        <div class="checkbox-group">
+                            ${shiftsConfig.map(s => `
+                                <label style="background: #eee; color: black">
+                                    <input type="checkbox" style="display:none" onchange="toggleShift('${d.id}', ${s.id})">
+                                    ${s.id}
+                                </label>
+                            `).join('')}
+                        </div>
+                    </div>
+                `).join('')}
+                ${unassignedDelegates.length === 0 ? '<p style="text-align:center; color:#7f8c8d; font-size:13px; margin-top:10px;">لا يوجد مناديب في قائمة الانتظار</p>' : ''}
+            </div>
+        `;
+        container.appendChild(unassignedCard);
+
         localStorage.setItem('delegates_v3', JSON.stringify(allDelegates));
     }
 
@@ -117,7 +153,8 @@
         const name = document.getElementById('delegateName').value;
         const phone = document.getElementById('delegatePhone').value;
         if (!name) return;
-        allDelegates.push({ id: Date.now().toString(), name: name, phone: phone, shiftIds: [1] });
+        // التعديل هنا: يتم إضافة المندوب بمصفوفة فترات فارغة [] ليكون في الانتظار
+        allDelegates.push({ id: Date.now().toString(), name: name, phone: phone, shiftIds: [] });
         document.getElementById('delegateName').value = '';
         document.getElementById('delegatePhone').value = '';
         render();
@@ -132,7 +169,7 @@
                 id: Math.random().toString(36).substr(2, 9), 
                 name: parts[0].trim(), 
                 phone: parts[1] ? parts[1].trim() : "", 
-                shiftIds: [1] 
+                shiftIds: [] // التعديل هنا أيضاً: مصفوفة فترات فارغة
             });
         });
         document.getElementById('bulkInput').value = '';
@@ -141,14 +178,20 @@
 
     function sendWhatsApp(delegateId, currentShiftId) {
         const delegate = allDelegates.find(d => d.id === delegateId);
-        const shift = shiftsConfig.find(s => s.id === currentShiftId);
         
         if (!delegate.phone) {
             alert("يرجى إضافة رقم جوال لهذا المندوب أولاً");
             return;
         }
 
-        const message = `أهلاً ${delegate.name}، لديك مناوبة في الفترة رقم (${shift.id}) من الساعة ${shift.time}. بالتوفيق!`;
+        let message = "";
+        if (currentShiftId) {
+            const shift = shiftsConfig.find(s => s.id === currentShiftId);
+            message = `أهلاً ${delegate.name}، لديك مناوبة في الفترة رقم (${shift.id}) من الساعة ${shift.time}. بالتوفيق!`;
+        } else {
+            message = `أهلاً ${delegate.name}، أنت حالياً في قائمة الانتظار (بدون فترة محددة). سنقوم بالتواصل معك قريباً لتحديد موعد مناوبتك!`;
+        }
+        
         const url = `https://wa.me/${delegate.phone}?text=${encodeURIComponent(message)}`;
         window.open(url, '_blank');
     }
@@ -157,7 +200,8 @@
         const delegate = allDelegates.find(d => d.id === delegateId);
         if (delegate) {
             if (delegate.shiftIds.includes(shiftId)) {
-                if (delegate.shiftIds.length > 1) delegate.shiftIds = delegate.shiftIds.filter(id => id !== shiftId);
+                // التعديل هنا: السماح بإزالة جميع الفترات ليعود المندوب إلى الانتظار
+                delegate.shiftIds = delegate.shiftIds.filter(id => id !== shiftId);
             } else {
                 delegate.shiftIds.push(shiftId);
             }
@@ -201,13 +245,11 @@
 
         const originalCards = document.querySelectorAll('.shift-card');
 
-        // جلب الفترات كل فترتين معاً
         for (let i = 0; i < originalCards.length; i += 2) {
             
-            // ✨ التعديل هنا: إدراج "عنصر وهمي مستقل" لكسر الصفحة قبل إضافة الفترتين الجديدتين ✨
             if (i !== 0) {
                 const pageBreak = document.createElement('div');
-                pageBreak.classList.add('html2pdf__page-break'); // الكلاس المعتمد من المكتبة
+                pageBreak.classList.add('html2pdf__page-break');
                 pdfContainer.appendChild(pageBreak);
             }
 
