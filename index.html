@@ -58,13 +58,14 @@
 </div>
 
 <script>
+    // تم عكس السهم هنا ليكون من اليسار لليمين
     const shiftsData = [
-        { id: 1, time: "11:00 ← 1:00", delegates: [] },
-        { id: 2, time: "1:00 ← 3:20", delegates: [] },
-        { id: 3, time: "3:20 ← 5:50", delegates: [] },
-        { id: 4, time: "6:50 ← 9:30", delegates: [] },
-        { id: 5, time: "9:30 ← 12:10", delegates: [] },
-        { id: 6, time: "12:10 ← 3:00", delegates: [] }
+        { id: 1, time: "11:00 → 1:00", delegates: [] },
+        { id: 2, time: "1:00 → 3:20", delegates: [] },
+        { id: 3, time: "3:20 → 5:50", delegates: [] },
+        { id: 4, time: "6:50 → 9:30", delegates: [] },
+        { id: 5, time: "9:30 → 12:10", delegates: [] },
+        { id: 6, time: "12:10 → 3:00", delegates: [] }
     ];
 
     let allDelegates = JSON.parse(localStorage.getItem('delegates')) || [];
@@ -82,8 +83,9 @@
             
             const card = document.createElement('div');
             card.className = 'shift-card';
+            // تم إضافة dir="ltr" لضمان ظهور الأرقام والأسهم بالاتجاه الصحيح
             card.innerHTML = `
-                <div class="shift-header">الفترة ${shift.id}<br><small dir="ltr">${shift.time}</small></div>
+                <div class="shift-header">الفترة ${shift.id}<br><div dir="ltr" style="display:inline-block; margin-top:5px;">${shift.time}</div></div>
                 <div class="delegate-list">
                     ${shift.delegates.map(d => `
                         <div class="delegate-item">
@@ -164,20 +166,16 @@
 
     function downloadPDF() {
         const element = document.getElementById('shiftsContainer');
-        // نأخذ نسخة من الجدول لتعديلها قبل الطباعة (لإخفاء الأزرار)
         const clone = element.cloneNode(true);
         
-        // إزالة أزرار الحذف والقوائم المنسدلة من نسخة الـ PDF فقط
         const actions = clone.querySelectorAll('.actions-div');
         actions.forEach(el => el.remove());
 
-        // إنشاء حاوية للـ PDF وتنسيقها
         const wrapper = document.createElement('div');
         wrapper.style.padding = "20px";
         wrapper.style.direction = "rtl";
         wrapper.style.fontFamily = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
 
-        // إضافة عنوان للـ PDF
         const header = document.createElement('h2');
         header.innerText = "جدول مناوبات المناديب - شهر رمضان المبارك 🌙";
         header.style.textAlign = "center";
@@ -185,7 +183,6 @@
         header.style.borderBottom = "2px solid #27ae60";
         header.style.paddingBottom = "10px";
 
-        // إضافة تاريخ الإصدار
         const dateStr = document.createElement('p');
         const today = new Date();
         dateStr.innerText = "تاريخ التصدير: " + today.toLocaleDateString('ar-EG');
@@ -197,7 +194,6 @@
         wrapper.appendChild(dateStr);
         wrapper.appendChild(clone);
 
-        // إعدادات التصدير
         const opt = {
             margin:       10,
             filename:     `جدول_مناوبات_رمضان_${today.getDate()}_${today.getMonth()+1}.pdf`,
@@ -206,11 +202,9 @@
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
         };
 
-        // تشغيل عملية التحويل
         html2pdf().set(opt).from(wrapper).save();
     }
 
-    // تشغيل التطبيق
     init();
 </script>
 
