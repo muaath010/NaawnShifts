@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام توزيع مناديب رمضان</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #27ae60;
+            --danger: #e74c3c;
+            --light: #ecf0f1;
+            --pdf-btn: #e67e22;
+        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; margin: 0; padding: 20px; color: var(--primary); }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: var(--primary); border-bottom: 2px solid var(--accent); padding-bottom: 10px; }
+        
+        .controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 30px; background: var(--light); padding: 15px; border-radius: 10px; align-items: center;}
+        button { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-add { background: var(--accent); color: white; }
+        .btn-rotate { background: #2980b9; color: white; }
+        .btn-random { background: #8e44ad; color: white; }
+        .btn-pdf { background: var(--pdf-btn); color: white; margin-right: auto; }
+        button:hover { opacity: 0.8; transform: translateY(-2px); }
+
+        .shifts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+        .shift-card { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 15px; min-height: 200px; }
+        .shift-header { font-weight: bold; background: var(--primary); color: white; padding: 8px; border-radius: 5px; margin-bottom: 10px; text-align: center; }
+        
+        .delegate-item { display: flex; justify-content: space-between; align-items: center; background: #f9f9f9; padding: 8px; margin: 5px 0; border-right: 4px solid var(--accent); border-radius: 4px; }
+        .delete-btn { color: var(--danger); cursor: pointer; font-size: 18px; border: none; background: none; padding: 0 5px;}
+        
+        select { padding: 5px; border-radius: 4px; border: 1px solid #ccc; }
+        textarea { width: 100%; height: 80px; margin-top: 10px; border-radius: 5px; padding: 10px; border: 1px solid #ccc; font-family: inherit;}
+        
+        input[type="text"] { padding: 10px; border: 1px solid #ccc; border-radius: 5px; width: 200px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🌙 نظام جدولة المناديب - رمضان</h1>
+
+    <div class="controls">
+        <input type="text" id="delegateName" placeholder="اسم المندوب الجديد">
+        <button class="btn-add" onclick="addSingle()">➕ إضافة مندوب</button>
+        <button class="btn-rotate" onclick="rotateShifts()">🔄 تدوير دوري</button>
+        <button class="btn-random" onclick="randomizeShifts()">🎲 توزيع عشوائي عادل</button>
+        <button class="btn-pdf" onclick="downloadPDF()">📄 تحميل الجدول PDF</button>
+        <textarea id="bulkInput" placeholder="لصق مجموعة أسماء (اسم في كل سطر)..."></textarea>
+        <button class="btn-add" onclick="addBulk()">📋 إضافة القائمة</button>
+    </div>
+
+    <div class="shifts-grid" id="shiftsContainer">
+        </div>
+</div>
+
+<script>
+    const shiftsData = [
+        { id: 1, time: "11:00 ← 1:00", delegates: [] },
+        { id: 2, time: "1:00 ← 3:20", delegates: [] },
+        { id: 3, time: "3:20 ← 5:50", delegates: [] },
+        { id: 4, time: "6:50 ← 9:30", delegates: [] },
+        { id: 5, time: "9:30 ← 12:10", delegates: [] },
+        { id: 6, time: "12:10 ← 3:00", delegates: [] }
+    ];
+
+    let allDelegates = JSON.parse(localStorage.getItem('delegates')) || [];
+
+    function init() {
+        render();
+    }
+
+    function render() {
+        const container = document.getElementById('shiftsContainer');
+        container.innerHTML = '';
+
+        shiftsData.forEach(shift => {
+            shift.delegates = allDelegates.filter(d => d.shiftId === shift.id);
+            
+            const card = document.createElement('div');
+            card.className = 'shift-card';
+            card.innerHTML = `
+                <div class="shift-header">الفترة ${shift.id}<br><small dir="ltr">${shift.time}</small></div>
+                <div class="delegate-list">
+                    ${shift.delegates.map(d => `
+                        <div class="delegate-item">
+                            <span>${d.name}</span>
+                            <div class="actions-div">
+                                <select onchange="moveDelegate('${d.id}', this.value)">
+                                    <option value="">نقل...</option>
+                                    ${shiftsData.map(s => `<option value="${s.id}">فترة ${s.id}</option>`).join('')}
+                                </select>
+                                <button class="delete-btn" onclick="deleteDelegate('${d.id}')">×</button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div style="margin-top:10px; font-weight:bold; font-size:13px; color: ${shift.delegates.length < 2 ? 'var(--danger)' : 'var(--accent)'}">
+                    العدد: ${shift.delegates.length} (مطلوب 2-5)
+                </div>
+            `;
+            container.appendChild(card);
+        });
+        localStorage.setItem('delegates', JSON.stringify(allDelegates));
+    }
+
+    function addSingle() {
+        const name = document.getElementById('delegateName').value;
+        if (!name) return;
+        allDelegates.push({ id: Date.now().toString(), name: name, shiftId: 1 });
+        document.getElementById('delegateName').value = '';
+        render();
+    }
+
+    function addBulk() {
+        const raw = document.getElementById('bulkInput').value;
+        const names = raw.split('\n').filter(n => n.trim() !== "");
+        names.forEach(n => {
+            allDelegates.push({ id: Math.random().toString(36).substr(2, 9), name: n.trim(), shiftId: 1 });
+        });
+        document.getElementById('bulkInput').value = '';
+        render();
+    }
+
+    function deleteDelegate(id) {
+        allDelegates = allDelegates.filter(d => d.id !== id);
+        render();
+    }
+
+    function moveDelegate(delegateId, newShiftId) {
+        if(!newShiftId) return;
+        const delegate = allDelegates.find(d => d.id === delegateId);
+        if (delegate) {
+            delegate.shiftId = parseInt(newShiftId);
+            render();
+        }
+    }
+
+    function randomizeShifts() {
+        if (allDelegates.length < 12) {
+            alert("تحتاج لـ 12 مندوب على الأقل لتغطية الفترات (2 لكل فترة)");
+            return;
+        }
+        
+        let shuffled = [...allDelegates].sort(() => Math.random() - 0.5);
+        
+        shuffled.forEach((d, index) => {
+            d.shiftId = (index % 6) + 1;
+        });
+        
+        allDelegates = shuffled;
+        render();
+    }
+
+    function rotateShifts() {
+        allDelegates.forEach(d => {
+            d.shiftId = d.shiftId >= 6 ? 1 : d.shiftId + 1;
+        });
+        render();
+    }
+
+    function downloadPDF() {
+        const element = document.getElementById('shiftsContainer');
+        // نأخذ نسخة من الجدول لتعديلها قبل الطباعة (لإخفاء الأزرار)
+        const clone = element.cloneNode(true);
+        
+        // إزالة أزرار الحذف والقوائم المنسدلة من نسخة الـ PDF فقط
+        const actions = clone.querySelectorAll('.actions-div');
+        actions.forEach(el => el.remove());
+
+        // إنشاء حاوية للـ PDF وتنسيقها
+        const wrapper = document.createElement('div');
+        wrapper.style.padding = "20px";
+        wrapper.style.direction = "rtl";
+        wrapper.style.fontFamily = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+
+        // إضافة عنوان للـ PDF
+        const header = document.createElement('h2');
+        header.innerText = "جدول مناوبات المناديب - شهر رمضان المبارك 🌙";
+        header.style.textAlign = "center";
+        header.style.color = "#2c3e50";
+        header.style.borderBottom = "2px solid #27ae60";
+        header.style.paddingBottom = "10px";
+
+        // إضافة تاريخ الإصدار
+        const dateStr = document.createElement('p');
+        const today = new Date();
+        dateStr.innerText = "تاريخ التصدير: " + today.toLocaleDateString('ar-EG');
+        dateStr.style.textAlign = "center";
+        dateStr.style.marginBottom = "30px";
+        dateStr.style.fontWeight = "bold";
+
+        wrapper.appendChild(header);
+        wrapper.appendChild(dateStr);
+        wrapper.appendChild(clone);
+
+        // إعدادات التصدير
+        const opt = {
+            margin:       10,
+            filename:     `جدول_مناوبات_رمضان_${today.getDate()}_${today.getMonth()+1}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        };
+
+        // تشغيل عملية التحويل
+        html2pdf().set(opt).from(wrapper).save();
+    }
+
+    // تشغيل التطبيق
+    init();
+</script>
+
+</body>
+</html>
