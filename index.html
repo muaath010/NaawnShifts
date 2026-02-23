@@ -117,7 +117,8 @@
         const unassignedDelegates = allDelegates.filter(d => d.shiftIds.length === 0);
         
         const unassignedCard = document.createElement('div');
-        unassignedCard.className = 'shift-card';
+        // ✨ التعديل هنا: إضافة كلاس exclude-from-pdf لاستثنائه من الطباعة ✨
+        unassignedCard.className = 'shift-card exclude-from-pdf'; 
         unassignedCard.style.border = '2px dashed var(--warning)';
         unassignedCard.innerHTML = `
             <div class="shift-header" style="background: var(--warning);">مناديب بدون فترة (انتظار)</div>
@@ -153,7 +154,6 @@
         const name = document.getElementById('delegateName').value;
         const phone = document.getElementById('delegatePhone').value;
         if (!name) return;
-        // التعديل هنا: يتم إضافة المندوب بمصفوفة فترات فارغة [] ليكون في الانتظار
         allDelegates.push({ id: Date.now().toString(), name: name, phone: phone, shiftIds: [] });
         document.getElementById('delegateName').value = '';
         document.getElementById('delegatePhone').value = '';
@@ -169,7 +169,7 @@
                 id: Math.random().toString(36).substr(2, 9), 
                 name: parts[0].trim(), 
                 phone: parts[1] ? parts[1].trim() : "", 
-                shiftIds: [] // التعديل هنا أيضاً: مصفوفة فترات فارغة
+                shiftIds: [] 
             });
         });
         document.getElementById('bulkInput').value = '';
@@ -200,7 +200,6 @@
         const delegate = allDelegates.find(d => d.id === delegateId);
         if (delegate) {
             if (delegate.shiftIds.includes(shiftId)) {
-                // التعديل هنا: السماح بإزالة جميع الفترات ليعود المندوب إلى الانتظار
                 delegate.shiftIds = delegate.shiftIds.filter(id => id !== shiftId);
             } else {
                 delegate.shiftIds.push(shiftId);
@@ -243,7 +242,8 @@
         pdfContainer.style.color = '#2c3e50';
         pdfContainer.style.fontFamily = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
 
-        const originalCards = document.querySelectorAll('.shift-card');
+        // ✨ التعديل هنا: جلب البطاقات التي لا تحتوي على كلاس exclude-from-pdf فقط ✨
+        const originalCards = document.querySelectorAll('.shift-card:not(.exclude-from-pdf)');
 
         for (let i = 0; i < originalCards.length; i += 2) {
             
