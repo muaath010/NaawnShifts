@@ -80,7 +80,6 @@
         const container = document.getElementById('shiftsContainer');
         container.innerHTML = '';
 
-        // رسم الفترات العادية
         shiftsConfig.forEach(shift => {
             const delegatesInShift = allDelegates.filter(d => d.shiftIds.includes(shift.id));
             
@@ -113,11 +112,9 @@
             container.appendChild(card);
         });
 
-        // إضافة قسم مخصص للمناديب بدون فترة (قائمة الانتظار)
         const unassignedDelegates = allDelegates.filter(d => d.shiftIds.length === 0);
         
         const unassignedCard = document.createElement('div');
-        // ✨ التعديل هنا: إضافة كلاس exclude-from-pdf لاستثنائه من الطباعة ✨
         unassignedCard.className = 'shift-card exclude-from-pdf'; 
         unassignedCard.style.border = '2px dashed var(--warning)';
         unassignedCard.innerHTML = `
@@ -230,23 +227,34 @@
             margin: 10, 
             filename: 'جدول_رمضان.pdf', 
             image: { type: 'jpeg', quality: 1 },
-            html2canvas: { scale: 2, useCORS: true }, 
+            html2canvas: { 
+                scale: 2, 
+                useCORS: true, 
+                scrollY: 0, // 💡 التعديل الأهم: تصفير التمرير لمنع القص
+                windowHeight: document.documentElement.scrollHeight // إجبار المكتبة على قراءة كامل الطول
+            }, 
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
             pagebreak: { mode: ['css', 'legacy'] }
         };
 
         const pdfContainer = document.createElement('div');
+        // 💡 إضافة الحاوية بشكل حقيقي إلى الصفحة ولكن إخفائها خلف العناصر
+        pdfContainer.style.position = 'absolute';
+        pdfContainer.style.top = '0';
+        pdfContainer.style.left = '0';
+        pdfContainer.style.width = '280mm';
+        pdfContainer.style.zIndex = '-9999'; 
         pdfContainer.style.direction = 'rtl';
         pdfContainer.style.padding = '15px';
         pdfContainer.style.background = '#f4f7f6';
         pdfContainer.style.color = '#2c3e50';
         pdfContainer.style.fontFamily = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+        
+        document.body.appendChild(pdfContainer); // إضافتها لتأخذ طولاً حقيقياً
 
-        // ✨ التعديل هنا: جلب البطاقات التي لا تحتوي على كلاس exclude-from-pdf فقط ✨
         const originalCards = document.querySelectorAll('.shift-card:not(.exclude-from-pdf)');
 
         for (let i = 0; i < originalCards.length; i += 2) {
-            
             if (i !== 0) {
                 const pageBreak = document.createElement('div');
                 pageBreak.classList.add('html2pdf__page-break');
@@ -257,6 +265,7 @@
             pageDiv.style.display = 'flex';
             pageDiv.style.justifyContent = 'space-between';
             pageDiv.style.gap = '20px';
+            pageDiv.style.marginBottom = '20px'; // لتفادي الالتصاق بأسفل الصفحة
             
             const card1 = originalCards[i].cloneNode(true);
             card1.style.flex = '1';
@@ -278,10 +287,12 @@
         }
 
         html2pdf().set(opt).from(pdfContainer).save().then(() => {
+            document.body.removeChild(pdfContainer); // تنظيف الصفحة بعد التصدير
             pdfBtn.innerHTML = originalText;
             pdfBtn.disabled = false;
         }).catch(err => {
             console.error("PDF Error: ", err);
+            if(document.body.contains(pdfContainer)) document.body.removeChild(pdfContainer);
             pdfBtn.innerHTML = originalText;
             pdfBtn.disabled = false;
             alert("حدث خطأ أثناء تصدير الملف.");
