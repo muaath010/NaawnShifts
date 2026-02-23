@@ -192,7 +192,6 @@
             pagebreak: { mode: ['css', 'legacy'] }
         };
 
-        // إنشاء الحاوية في الذاكرة (بدون إضافتها للصفحة)
         const pdfContainer = document.createElement('div');
         pdfContainer.style.direction = 'rtl';
         pdfContainer.style.padding = '15px';
@@ -202,20 +201,21 @@
 
         const originalCards = document.querySelectorAll('.shift-card');
 
-        // جلب الفترات كل فترتين في صفحة
+        // جلب الفترات كل فترتين معاً
         for (let i = 0; i < originalCards.length; i += 2) {
-            const pageDiv = document.createElement('div');
             
+            // ✨ التعديل هنا: إدراج "عنصر وهمي مستقل" لكسر الصفحة قبل إضافة الفترتين الجديدتين ✨
+            if (i !== 0) {
+                const pageBreak = document.createElement('div');
+                pageBreak.classList.add('html2pdf__page-break'); // الكلاس المعتمد من المكتبة
+                pdfContainer.appendChild(pageBreak);
+            }
+
+            const pageDiv = document.createElement('div');
             pageDiv.style.display = 'flex';
             pageDiv.style.justifyContent = 'space-between';
             pageDiv.style.gap = '20px';
-            pageDiv.style.marginBottom = '20px';
             
-            // إضافة فاصل صفحات موثوق يدعمه html2pdf
-            if (i !== 0) {
-                pageDiv.classList.add('html2pdf__page-break');
-            }
-
             const card1 = originalCards[i].cloneNode(true);
             card1.style.flex = '1';
             card1.style.width = '48%';
@@ -235,7 +235,6 @@
             pdfContainer.appendChild(pageDiv);
         }
 
-        // تمرير الحاوية للمكتبة مباشرة
         html2pdf().set(opt).from(pdfContainer).save().then(() => {
             pdfBtn.innerHTML = originalText;
             pdfBtn.disabled = false;
