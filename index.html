@@ -40,6 +40,40 @@
         .checkbox-group label { background: #eee; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; }
         
         textarea, input[type="text"] { padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-family: inherit; }
+
+        /* 🌟 التنسيقات السحرية لملف الـ PDF فقط (يتم تفعيلها برمجياً وقت التصدير) 🌟 */
+        .pdf-mode #shiftsContainer {
+            display: block !important;
+            background: white !important;
+        }
+        .pdf-mode .shift-card {
+            display: inline-block !important;
+            width: 48% !important;
+            vertical-align: top !important;
+            margin: 0 1% 20px 1% !important;
+            box-sizing: border-box !important;
+        }
+        /* تنظيف الجدول من كل الأزرار وصناديق التحديد ليصبح للطباعة فقط */
+        .pdf-mode .exclude-from-pdf,
+        .pdf-mode button, 
+        .pdf-mode .checkbox-group {
+            display: none !important; 
+        }
+        /* كلاس الفاصل بين الصفحات */
+        .pdf-mode .temp-pb {
+            display: block !important;
+            width: 100% !important;
+            height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            page-break-before: always !important; /* لكسر الصفحة إجبارياً */
+        }
+        /* توسيط أسماء المناديب في ملف الطباعة */
+        .pdf-mode .item-main {
+            margin-bottom: 0 !important; 
+            justify-content: center !important; 
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
@@ -223,6 +257,21 @@
         pdfBtn.innerHTML = '⏳ جاري تجهيز الملف... الرجاء الانتظار';
         pdfBtn.disabled = true;
 
+        // 1. تفعيل وضع الـ PDF ليقوم بتنظيف الجدول وتجهيزه
+        document.body.classList.add('pdf-mode');
+
+        const container = document.getElementById('shiftsContainer');
+        const cards = container.querySelectorAll('.shift-card:not(.exclude-from-pdf)');
+        
+        // 2. إدراج فواصل الصفحات بشكل حيوي في الصفحة الحقيقية
+        const pageBreaks = [];
+        for (let i = 2; i < cards.length; i += 2) {
+            const pb = document.createElement('div');
+            pb.className = 'html2pdf__page-break temp-pb'; // كلاس الفاصل المعترف به من المكتبة
+            container.insertBefore(pb, cards[i]);
+            pageBreaks.push(pb);
+        }
+
         const opt = { 
             margin: 10, 
             filename: 'جدول_رمضان.pdf', 
@@ -232,62 +281,24 @@
             pagebreak: { mode: ['css', 'legacy'] }
         };
 
-        // إنشاء حاوية عادية غير مضافة للصفحة (لتفادي مشكلة الصفحة البيضاء)
-        const pdfContainer = document.createElement('div');
-        pdfContainer.style.direction = 'rtl';
-        pdfContainer.style.padding = '15px';
-        pdfContainer.style.background = '#f4f7f6';
-        pdfContainer.style.fontFamily = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
-        pdfContainer.style.width = '280mm'; // تحديد العرض بوضوح لمنع القص العرضي
-
-        const originalCards = document.querySelectorAll('.shift-card:not(.exclude-from-pdf)');
-
-        for (let i = 0; i < originalCards.length; i += 2) {
-            
-            if (i !== 0) {
-                const pageBreak = document.createElement('div');
-                pageBreak.classList.add('html2pdf__page-break');
-                pdfContainer.appendChild(pageBreak);
-            }
-
-            const rowDiv = document.createElement('div');
-            // 💡 السر هنا: التخلص من Flexbox تماماً واستخدام البلوكات لتوافق أفضل مع PDF
-            rowDiv.style.display = 'block'; 
-            rowDiv.style.width = '100%';
-            rowDiv.style.marginBottom = '20px';
-            
-            const card1 = originalCards[i].cloneNode(true);
-            card1.style.display = 'inline-block';
-            card1.style.width = '48%';
-            card1.style.verticalAlign = 'top';
-            card1.style.boxSizing = 'border-box';
-            card1.style.margin = '0 1%';
-            card1.querySelectorAll('button, input').forEach(el => el.remove());
-            rowDiv.appendChild(card1);
-
-            if (originalCards[i + 1]) {
-                const card2 = originalCards[i + 1].cloneNode(true);
-                card2.style.display = 'inline-block';
-                card2.style.width = '48%';
-                card2.style.verticalAlign = 'top';
-                card2.style.boxSizing = 'border-box';
-                card2.style.margin = '0 1%';
-                card2.querySelectorAll('button, input').forEach(el => el.remove());
-                rowDiv.appendChild(card2);
-            }
-
-            pdfContainer.appendChild(rowDiv);
-        }
-
-        html2pdf().set(opt).from(pdfContainer).save().then(() => {
-            pdfBtn.innerHTML = originalText;
-            pdfBtn.disabled = false;
-        }).catch(err => {
-            console.error("PDF Error: ", err);
-            pdfBtn.innerHTML = originalText;
-            pdfBtn.disabled = false;
-            alert("حدث خطأ أثناء تصدير الملف.");
-        });
+        // ننتظر جزءاً من الثانية ليتأكد المتصفح من تطبيق التنسيقات قبل أخذ الصورة
+        setTimeout(() => {
+            html2pdf().set(opt).from(container).save().then(() => {
+                // 3. إعادة الصفحة لوضعها الطبيعي ومسح فواصل الصفحات
+                document.body.classList.remove('pdf-mode');
+                pageBreaks.forEach(pb => pb.remove());
+                pdfBtn.innerHTML = originalText;
+                pdfBtn.disabled = false;
+            }).catch(err => {
+                console.error("PDF Error: ", err);
+                // إعادة الصفحة لوضعها حتى لو حدث خطأ
+                document.body.classList.remove('pdf-mode');
+                pageBreaks.forEach(pb => pb.remove());
+                pdfBtn.innerHTML = originalText;
+                pdfBtn.disabled = false;
+                alert("حدث خطأ أثناء تصدير الملف.");
+            });
+        }, 300);
     }
 
     render();
