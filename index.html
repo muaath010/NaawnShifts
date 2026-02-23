@@ -21,6 +21,7 @@
         .input-group { display: flex; flex-direction: column; gap: 8px; }
         
         button { padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
+        button:disabled { cursor: not-allowed; opacity: 0.7; }
         .btn-add { background: var(--accent); color: white; }
         .btn-random { background: #8e44ad; color: white; }
         .btn-pdf { background: #e67e22; color: white; grid-column: span 2; }
@@ -56,7 +57,7 @@
             <button class="btn-add" onclick="addBulk()">📋 إضافة القائمة</button>
         </div>
         <button class="btn-random" onclick="randomizeShifts()">🎲 توزيع عشوائي عادل</button>
-        <button class="btn-pdf" onclick="downloadPDF()">📄 تصدير الجدول PDF</button>
+        <button id="pdfBtn" class="btn-pdf" onclick="downloadPDF()">📄 تصدير الجدول PDF</button>
     </div>
 
     <div class="shifts-grid" id="shiftsContainer"></div>
@@ -177,38 +178,57 @@
     }
 
     function downloadPDF() {
+        // تغيير حالة الزر ليظهر للمستخدم أن العملية قيد التنفيذ
+        const pdfBtn = document.getElementById('pdfBtn');
+        const originalText = pdfBtn.innerHTML;
+        pdfBtn.innerHTML = '⏳ جاري تجهيز الملف... الرجاء الانتظار';
+        pdfBtn.disabled = true;
+
         const opt = { 
             margin: 10, 
             filename: 'جدول_رمضان.pdf', 
-            html2canvas: { scale: 2 }, 
-            jsPDF: { orientation: 'landscape' },
+            image: { type: 'jpeg', quality: 1 },
+            html2canvas: { scale: 2, useCORS: true, letterRendering: true }, 
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
             pagebreak: { mode: ['css', 'legacy'] }
         };
 
         const pdfContainer = document.createElement('div');
         pdfContainer.style.direction = 'rtl';
         pdfContainer.style.padding = '10px';
+        pdfContainer.style.background = '#fff';
+        pdfContainer.style.width = '280mm'; 
+        pdfContainer.style.position = 'absolute';
+        pdfContainer.style.left = '-9999px';
+        pdfContainer.style.top = '0';
+        document.body.appendChild(pdfContainer);
 
         const originalCards = document.querySelectorAll('.shift-card');
 
         for (let i = 0; i < originalCards.length; i += 2) {
             const pageDiv = document.createElement('div');
             
-            pageDiv.style.display = 'grid';
-            pageDiv.style.gridTemplateColumns = '1fr 1fr';
+            pageDiv.style.display = 'flex';
+            pageDiv.style.justifyContent = 'space-between';
             pageDiv.style.gap = '15px';
             pageDiv.style.width = '100%';
+            pageDiv.style.marginBottom = '20px';
             
             if (i !== 0) {
                 pageDiv.style.pageBreakBefore = 'always';
+                pageDiv.classList.add('html2pdf__page-break'); 
             }
 
             const card1 = originalCards[i].cloneNode(true);
+            card1.style.width = '48%';
+            card1.style.boxSizing = 'border-box';
             card1.querySelectorAll('button, input').forEach(el => el.remove());
             pageDiv.appendChild(card1);
 
             if (originalCards[i + 1]) {
                 const card2 = originalCards[i + 1].cloneNode(true);
+                card2.style.width = '48%';
+                card2.style.boxSizing = 'border-box';
                 card2.querySelectorAll('button, input').forEach(el => el.remove());
                 pageDiv.appendChild(card2);
             }
@@ -216,7 +236,22 @@
             pdfContainer.appendChild(pageDiv);
         }
 
-        html2pdf().set(opt).from(pdfContainer).save();
+        // استخدام setTimeout لإعطاء المتصفح فرصة لتحديث واجهة المستخدم (تغيير نص الزر) قبل بدء التصدير الثقيل
+        setTimeout(() => {
+            html2pdf().set(opt).from(pdfContainer).save().then(() => {
+                // إعادة الزر لحالته الطبيعية بعد انتهاء التصدير
+                document.body.removeChild(pdfContainer);
+                pdfBtn.innerHTML = originalText;
+                pdfBtn.disabled = false;
+            }).catch(err => {
+                // في حال حدوث خطأ، نعيد الزر ونظهر رسالة
+                console.error("PDF Error: ", err);
+                document.body.removeChild(pdfContainer);
+                pdfBtn.innerHTML = originalText;
+                pdfBtn.disabled = false;
+                alert("حدث خطأ أثناء تصدير الملف.");
+            });
+        }, 100);
     }
 
     render();
