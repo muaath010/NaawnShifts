@@ -178,7 +178,6 @@
     }
 
     function downloadPDF() {
-        // تغيير حالة الزر ليظهر للمستخدم أن العملية قيد التنفيذ
         const pdfBtn = document.getElementById('pdfBtn');
         const originalText = pdfBtn.innerHTML;
         pdfBtn.innerHTML = '⏳ جاري تجهيز الملف... الرجاء الانتظار';
@@ -188,38 +187,37 @@
             margin: 10, 
             filename: 'جدول_رمضان.pdf', 
             image: { type: 'jpeg', quality: 1 },
-            html2canvas: { scale: 2, useCORS: true, letterRendering: true }, 
+            html2canvas: { scale: 2, useCORS: true }, 
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
             pagebreak: { mode: ['css', 'legacy'] }
         };
 
+        // إنشاء الحاوية في الذاكرة (بدون إضافتها للصفحة)
         const pdfContainer = document.createElement('div');
         pdfContainer.style.direction = 'rtl';
-        pdfContainer.style.padding = '10px';
-        pdfContainer.style.background = '#fff';
-        pdfContainer.style.width = '280mm'; 
-        pdfContainer.style.position = 'absolute';
-        pdfContainer.style.left = '-9999px';
-        pdfContainer.style.top = '0';
-        document.body.appendChild(pdfContainer);
+        pdfContainer.style.padding = '15px';
+        pdfContainer.style.background = '#f4f7f6';
+        pdfContainer.style.color = '#2c3e50';
+        pdfContainer.style.fontFamily = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
 
         const originalCards = document.querySelectorAll('.shift-card');
 
+        // جلب الفترات كل فترتين في صفحة
         for (let i = 0; i < originalCards.length; i += 2) {
             const pageDiv = document.createElement('div');
             
             pageDiv.style.display = 'flex';
             pageDiv.style.justifyContent = 'space-between';
-            pageDiv.style.gap = '15px';
-            pageDiv.style.width = '100%';
+            pageDiv.style.gap = '20px';
             pageDiv.style.marginBottom = '20px';
             
+            // إضافة فاصل صفحات موثوق يدعمه html2pdf
             if (i !== 0) {
-                pageDiv.style.pageBreakBefore = 'always';
-                pageDiv.classList.add('html2pdf__page-break'); 
+                pageDiv.classList.add('html2pdf__page-break');
             }
 
             const card1 = originalCards[i].cloneNode(true);
+            card1.style.flex = '1';
             card1.style.width = '48%';
             card1.style.boxSizing = 'border-box';
             card1.querySelectorAll('button, input').forEach(el => el.remove());
@@ -227,6 +225,7 @@
 
             if (originalCards[i + 1]) {
                 const card2 = originalCards[i + 1].cloneNode(true);
+                card2.style.flex = '1';
                 card2.style.width = '48%';
                 card2.style.boxSizing = 'border-box';
                 card2.querySelectorAll('button, input').forEach(el => el.remove());
@@ -236,22 +235,16 @@
             pdfContainer.appendChild(pageDiv);
         }
 
-        // استخدام setTimeout لإعطاء المتصفح فرصة لتحديث واجهة المستخدم (تغيير نص الزر) قبل بدء التصدير الثقيل
-        setTimeout(() => {
-            html2pdf().set(opt).from(pdfContainer).save().then(() => {
-                // إعادة الزر لحالته الطبيعية بعد انتهاء التصدير
-                document.body.removeChild(pdfContainer);
-                pdfBtn.innerHTML = originalText;
-                pdfBtn.disabled = false;
-            }).catch(err => {
-                // في حال حدوث خطأ، نعيد الزر ونظهر رسالة
-                console.error("PDF Error: ", err);
-                document.body.removeChild(pdfContainer);
-                pdfBtn.innerHTML = originalText;
-                pdfBtn.disabled = false;
-                alert("حدث خطأ أثناء تصدير الملف.");
-            });
-        }, 100);
+        // تمرير الحاوية للمكتبة مباشرة
+        html2pdf().set(opt).from(pdfContainer).save().then(() => {
+            pdfBtn.innerHTML = originalText;
+            pdfBtn.disabled = false;
+        }).catch(err => {
+            console.error("PDF Error: ", err);
+            pdfBtn.innerHTML = originalText;
+            pdfBtn.disabled = false;
+            alert("حدث خطأ أثناء تصدير الملف.");
+        });
     }
 
     render();
