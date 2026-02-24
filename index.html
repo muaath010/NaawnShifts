@@ -40,12 +40,42 @@
         .checkbox-group label { background: #eee; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; }
         
         textarea, input[type="text"] { padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-family: inherit; }
+
+        .pdf-mode #shiftsContainer {
+            display: block !important;
+            background: white !important;
+        }
+        .pdf-mode .shift-card {
+            display: inline-block !important;
+            width: 48% !important;
+            vertical-align: top !important;
+            margin: 0 1% 20px 1% !important;
+            box-sizing: border-box !important;
+        }
+        .pdf-mode .exclude-from-pdf,
+        .pdf-mode button, 
+        .pdf-mode .checkbox-group {
+            display: none !important; 
+        }
+        .pdf-mode .temp-pb {
+            display: block !important;
+            width: 100% !important;
+            height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            page-break-before: always !important; 
+        }
+        .pdf-mode .item-main {
+            margin-bottom: 0 !important; 
+            justify-content: center !important; 
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>🌙 نظام مناديب رمضان + إرسال واتساب</h1>
+    <h1>🌙 نظام مناديب رمضان  </h1>
 
     <div class="controls">
         <div class="input-group">
@@ -80,7 +110,6 @@
         const container = document.getElementById('shiftsContainer');
         container.innerHTML = '';
 
-        // رسم الفترات العادية
         shiftsConfig.forEach(shift => {
             const delegatesInShift = allDelegates.filter(d => d.shiftIds.includes(shift.id));
             
@@ -94,7 +123,7 @@
                             <div class="item-main">
                                 <span class="delegate-name">${d.name}</span>
                                 <div style="display:flex; gap:5px;">
-                                    <button class="btn-whatsapp" onclick="sendWhatsApp('${d.id}', ${shift.id})">💬 واتساب</button>
+                                    <button class="btn-whatsapp" onclick="sendWhatsApp('${d.id}')">💬 واتساب</button>
                                     <button style="background:none; color:red; cursor:pointer;" onclick="deleteDelegate('${d.id}')">×</button>
                                 </div>
                             </div>
@@ -113,11 +142,10 @@
             container.appendChild(card);
         });
 
-        // إضافة قسم مخصص للمناديب بدون فترة (قائمة الانتظار)
         const unassignedDelegates = allDelegates.filter(d => d.shiftIds.length === 0);
         
         const unassignedCard = document.createElement('div');
-        unassignedCard.className = 'shift-card';
+        unassignedCard.className = 'shift-card exclude-from-pdf'; 
         unassignedCard.style.border = '2px dashed var(--warning)';
         unassignedCard.innerHTML = `
             <div class="shift-header" style="background: var(--warning);">مناديب بدون فترة (انتظار)</div>
@@ -127,7 +155,7 @@
                         <div class="item-main">
                             <span class="delegate-name">${d.name}</span>
                             <div style="display:flex; gap:5px;">
-                                <button class="btn-whatsapp" onclick="sendWhatsApp('${d.id}', null)">💬 واتساب</button>
+                                <button class="btn-whatsapp" onclick="sendWhatsApp('${d.id}')">💬 واتساب</button>
                                 <button style="background:none; color:red; cursor:pointer;" onclick="deleteDelegate('${d.id}')">×</button>
                             </div>
                         </div>
@@ -153,7 +181,6 @@
         const name = document.getElementById('delegateName').value;
         const phone = document.getElementById('delegatePhone').value;
         if (!name) return;
-        // التعديل هنا: يتم إضافة المندوب بمصفوفة فترات فارغة [] ليكون في الانتظار
         allDelegates.push({ id: Date.now().toString(), name: name, phone: phone, shiftIds: [] });
         document.getElementById('delegateName').value = '';
         document.getElementById('delegatePhone').value = '';
@@ -169,14 +196,15 @@
                 id: Math.random().toString(36).substr(2, 9), 
                 name: parts[0].trim(), 
                 phone: parts[1] ? parts[1].trim() : "", 
-                shiftIds: [] // التعديل هنا أيضاً: مصفوفة فترات فارغة
+                shiftIds: [] 
             });
         });
         document.getElementById('bulkInput').value = '';
         render();
     }
 
-    function sendWhatsApp(delegateId, currentShiftId) {
+    // ✨ التعديل الجديد: دالة إرسال الواتساب الشاملة ✨
+    function sendWhatsApp(delegateId) {
         const delegate = allDelegates.find(d => d.id === delegateId);
         
         if (!delegate.phone) {
@@ -185,11 +213,22 @@
         }
 
         let message = "";
-        if (currentShiftId) {
-            const shift = shiftsConfig.find(s => s.id === currentShiftId);
-            message = `أهلاً ${delegate.name}، لديك مناوبة في الفترة رقم (${shift.id}) من الساعة ${shift.time}. بالتوفيق!`;
+        
+        // التحقق مما إذا كان لدى المندوب فترات محددة
+        if (delegate.shiftIds && delegate.shiftIds.length > 0) {
+            // ترتيب الفترات تصاعدياً (الفترة 1 ثم 2 وهكذا)
+            const sortedShifts = [...delegate.shiftIds].sort((a, b) => a - b);
+            
+            // تجميع نصوص الفترات
+            let shiftsText = sortedShifts.map(id => {
+                const shift = shiftsConfig.find(s => s.id === id);
+                return `▪️ الفترة رقم (${shift.id}): من ${shift.time}`;
+            }).join('\n');
+            
+            message = `أهلاً ${delegate.name} 🌙\nلديك مناوبات في الفترات التالية اليوم:\n\n${shiftsText}\n\nبالتوفيق!`;
         } else {
-            message = `أهلاً ${delegate.name}، أنت حالياً في قائمة الانتظار (بدون فترة محددة). سنقوم بالتواصل معك قريباً لتحديد موعد مناوبتك!`;
+            // رسالة قائمة الانتظار
+            message = `أهلاً ${delegate.name} 🌙\nأنت حالياً في قائمة الانتظار (بدون فترة محددة). سنقوم بالتواصل معك قريباً لتحديد موعد مناوبتك!`;
         }
         
         const url = `https://wa.me/${delegate.phone}?text=${encodeURIComponent(message)}`;
@@ -200,7 +239,6 @@
         const delegate = allDelegates.find(d => d.id === delegateId);
         if (delegate) {
             if (delegate.shiftIds.includes(shiftId)) {
-                // التعديل هنا: السماح بإزالة جميع الفترات ليعود المندوب إلى الانتظار
                 delegate.shiftIds = delegate.shiftIds.filter(id => id !== shiftId);
             } else {
                 delegate.shiftIds.push(shiftId);
@@ -227,6 +265,19 @@
         pdfBtn.innerHTML = '⏳ جاري تجهيز الملف... الرجاء الانتظار';
         pdfBtn.disabled = true;
 
+        document.body.classList.add('pdf-mode');
+
+        const container = document.getElementById('shiftsContainer');
+        const cards = container.querySelectorAll('.shift-card:not(.exclude-from-pdf)');
+        
+        const pageBreaks = [];
+        for (let i = 2; i < cards.length; i += 2) {
+            const pb = document.createElement('div');
+            pb.className = 'html2pdf__page-break temp-pb'; 
+            container.insertBefore(pb, cards[i]);
+            pageBreaks.push(pb);
+        }
+
         const opt = { 
             margin: 10, 
             filename: 'جدول_رمضان.pdf', 
@@ -236,56 +287,21 @@
             pagebreak: { mode: ['css', 'legacy'] }
         };
 
-        const pdfContainer = document.createElement('div');
-        pdfContainer.style.direction = 'rtl';
-        pdfContainer.style.padding = '15px';
-        pdfContainer.style.background = '#f4f7f6';
-        pdfContainer.style.color = '#2c3e50';
-        pdfContainer.style.fontFamily = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
-
-        const originalCards = document.querySelectorAll('.shift-card');
-
-        for (let i = 0; i < originalCards.length; i += 2) {
-            
-            if (i !== 0) {
-                const pageBreak = document.createElement('div');
-                pageBreak.classList.add('html2pdf__page-break');
-                pdfContainer.appendChild(pageBreak);
-            }
-
-            const pageDiv = document.createElement('div');
-            pageDiv.style.display = 'flex';
-            pageDiv.style.justifyContent = 'space-between';
-            pageDiv.style.gap = '20px';
-            
-            const card1 = originalCards[i].cloneNode(true);
-            card1.style.flex = '1';
-            card1.style.width = '48%';
-            card1.style.boxSizing = 'border-box';
-            card1.querySelectorAll('button, input').forEach(el => el.remove());
-            pageDiv.appendChild(card1);
-
-            if (originalCards[i + 1]) {
-                const card2 = originalCards[i + 1].cloneNode(true);
-                card2.style.flex = '1';
-                card2.style.width = '48%';
-                card2.style.boxSizing = 'border-box';
-                card2.querySelectorAll('button, input').forEach(el => el.remove());
-                pageDiv.appendChild(card2);
-            }
-
-            pdfContainer.appendChild(pageDiv);
-        }
-
-        html2pdf().set(opt).from(pdfContainer).save().then(() => {
-            pdfBtn.innerHTML = originalText;
-            pdfBtn.disabled = false;
-        }).catch(err => {
-            console.error("PDF Error: ", err);
-            pdfBtn.innerHTML = originalText;
-            pdfBtn.disabled = false;
-            alert("حدث خطأ أثناء تصدير الملف.");
-        });
+        setTimeout(() => {
+            html2pdf().set(opt).from(container).save().then(() => {
+                document.body.classList.remove('pdf-mode');
+                pageBreaks.forEach(pb => pb.remove());
+                pdfBtn.innerHTML = originalText;
+                pdfBtn.disabled = false;
+            }).catch(err => {
+                console.error("PDF Error: ", err);
+                document.body.classList.remove('pdf-mode');
+                pageBreaks.forEach(pb => pb.remove());
+                pdfBtn.innerHTML = originalText;
+                pdfBtn.disabled = false;
+                alert("حدث خطأ أثناء تصدير الملف.");
+            });
+        }, 300);
     }
 
     render();
