@@ -41,23 +41,25 @@
         
         textarea, input[type="text"] { padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-family: inherit; }
 
-        .pdf-mode #shiftsContainer {
+        /* 🌟 التعديل السحري: تطبيق التنسيقات على الحاوية نفسها لضمان تصويرها بدقة 🌟 */
+        #shiftsContainer.pdf-mode {
             display: block !important;
             background: white !important;
+            width: 100% !important;
         }
-        .pdf-mode .shift-card {
+        #shiftsContainer.pdf-mode .shift-card {
             display: inline-block !important;
             width: 48% !important;
             vertical-align: top !important;
             margin: 0 1% 20px 1% !important;
             box-sizing: border-box !important;
         }
-        .pdf-mode .exclude-from-pdf,
-        .pdf-mode button, 
-        .pdf-mode .checkbox-group {
+        #shiftsContainer.pdf-mode .exclude-from-pdf,
+        #shiftsContainer.pdf-mode button, 
+        #shiftsContainer.pdf-mode .checkbox-group {
             display: none !important; 
         }
-        .pdf-mode .temp-pb {
+        #shiftsContainer.pdf-mode .temp-pb {
             display: block !important;
             width: 100% !important;
             height: 0 !important;
@@ -65,7 +67,7 @@
             padding: 0 !important;
             page-break-before: always !important; 
         }
-        .pdf-mode .item-main {
+        #shiftsContainer.pdf-mode .item-main {
             margin-bottom: 0 !important; 
             justify-content: center !important; 
             font-size: 16px;
@@ -75,7 +77,7 @@
 <body>
 
 <div class="container">
-    <h1>🌙 نظام مناديب رمضان  </h1>
+    <h1>🌙 نظام مناديب رمضان + إرسال واتساب</h1>
 
     <div class="controls">
         <div class="input-group">
@@ -203,7 +205,6 @@
         render();
     }
 
-    // ✨ التعديل الجديد: دالة إرسال الواتساب الشاملة ✨
     function sendWhatsApp(delegateId) {
         const delegate = allDelegates.find(d => d.id === delegateId);
         
@@ -214,12 +215,9 @@
 
         let message = "";
         
-        // التحقق مما إذا كان لدى المندوب فترات محددة
         if (delegate.shiftIds && delegate.shiftIds.length > 0) {
-            // ترتيب الفترات تصاعدياً (الفترة 1 ثم 2 وهكذا)
             const sortedShifts = [...delegate.shiftIds].sort((a, b) => a - b);
             
-            // تجميع نصوص الفترات
             let shiftsText = sortedShifts.map(id => {
                 const shift = shiftsConfig.find(s => s.id === id);
                 return `▪️ الفترة رقم (${shift.id}): من ${shift.time}`;
@@ -227,7 +225,6 @@
             
             message = `أهلاً ${delegate.name} 🌙\nلديك مناوبات في الفترات التالية اليوم:\n\n${shiftsText}\n\nبالتوفيق!`;
         } else {
-            // رسالة قائمة الانتظار
             message = `أهلاً ${delegate.name} 🌙\nأنت حالياً في قائمة الانتظار (بدون فترة محددة). سنقوم بالتواصل معك قريباً لتحديد موعد مناوبتك!`;
         }
         
@@ -265,9 +262,11 @@
         pdfBtn.innerHTML = '⏳ جاري تجهيز الملف... الرجاء الانتظار';
         pdfBtn.disabled = true;
 
-        document.body.classList.add('pdf-mode');
-
         const container = document.getElementById('shiftsContainer');
+        
+        // ✨ السر هنا: إضافة الكلاس للحاوية نفسها وليس للـ body ✨
+        container.classList.add('pdf-mode');
+
         const cards = container.querySelectorAll('.shift-card:not(.exclude-from-pdf)');
         
         const pageBreaks = [];
@@ -282,20 +281,21 @@
             margin: 10, 
             filename: 'جدول_رمضان.pdf', 
             image: { type: 'jpeg', quality: 1 },
-            html2canvas: { scale: 2, useCORS: true }, 
+            html2canvas: { scale: 2, useCORS: true, scrollY: 0 }, 
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
             pagebreak: { mode: ['css', 'legacy'] }
         };
 
         setTimeout(() => {
             html2pdf().set(opt).from(container).save().then(() => {
-                document.body.classList.remove('pdf-mode');
+                // إرجاع الوضع لطبيعته
+                container.classList.remove('pdf-mode');
                 pageBreaks.forEach(pb => pb.remove());
                 pdfBtn.innerHTML = originalText;
                 pdfBtn.disabled = false;
             }).catch(err => {
                 console.error("PDF Error: ", err);
-                document.body.classList.remove('pdf-mode');
+                container.classList.remove('pdf-mode');
                 pageBreaks.forEach(pb => pb.remove());
                 pdfBtn.innerHTML = originalText;
                 pdfBtn.disabled = false;
