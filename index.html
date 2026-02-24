@@ -40,38 +40,6 @@
         .checkbox-group label { background: #eee; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; }
         
         textarea, input[type="text"] { padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-family: inherit; }
-
-        /* 🌟 التعديل السحري: تطبيق التنسيقات على الحاوية نفسها لضمان تصويرها بدقة 🌟 */
-        #shiftsContainer.pdf-mode {
-            display: block !important;
-            background: white !important;
-            width: 100% !important;
-        }
-        #shiftsContainer.pdf-mode .shift-card {
-            display: inline-block !important;
-            width: 48% !important;
-            vertical-align: top !important;
-            margin: 0 1% 20px 1% !important;
-            box-sizing: border-box !important;
-        }
-        #shiftsContainer.pdf-mode .exclude-from-pdf,
-        #shiftsContainer.pdf-mode button, 
-        #shiftsContainer.pdf-mode .checkbox-group {
-            display: none !important; 
-        }
-        #shiftsContainer.pdf-mode .temp-pb {
-            display: block !important;
-            width: 100% !important;
-            height: 0 !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            page-break-before: always !important; 
-        }
-        #shiftsContainer.pdf-mode .item-main {
-            margin-bottom: 0 !important; 
-            justify-content: center !important; 
-            font-size: 16px;
-        }
     </style>
 </head>
 <body>
@@ -144,10 +112,11 @@
             container.appendChild(card);
         });
 
+        // إضافة قسم مخصص للمناديب بدون فترة (قائمة الانتظار)
         const unassignedDelegates = allDelegates.filter(d => d.shiftIds.length === 0);
         
         const unassignedCard = document.createElement('div');
-        unassignedCard.className = 'shift-card exclude-from-pdf'; 
+        unassignedCard.className = 'shift-card';
         unassignedCard.style.border = '2px dashed var(--warning)';
         unassignedCard.innerHTML = `
             <div class="shift-header" style="background: var(--warning);">مناديب بدون فترة (انتظار)</div>
@@ -217,7 +186,6 @@
         
         if (delegate.shiftIds && delegate.shiftIds.length > 0) {
             const sortedShifts = [...delegate.shiftIds].sort((a, b) => a - b);
-            
             let shiftsText = sortedShifts.map(id => {
                 const shift = shiftsConfig.find(s => s.id === id);
                 return `▪️ الفترة رقم (${shift.id}): من ${shift.time}`;
@@ -256,52 +224,85 @@
         render();
     }
 
+    // ✨ التعديل الجذري والنهائي لحل مشكلة الصفحة البيضاء وتقسيم الصفحات ✨
     function downloadPDF() {
         const pdfBtn = document.getElementById('pdfBtn');
         const originalText = pdfBtn.innerHTML;
         pdfBtn.innerHTML = '⏳ جاري تجهيز الملف... الرجاء الانتظار';
         pdfBtn.disabled = true;
 
-        const container = document.getElementById('shiftsContainer');
-        
-        // ✨ السر هنا: إضافة الكلاس للحاوية نفسها وليس للـ body ✨
-        container.classList.add('pdf-mode');
+        // بناء قالب HTML مستقل ونظيف مخصص للطباعة فقط (لا يتأثر بالشاشة نهائياً)
+        let printHTML = `
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; direction: rtl; padding: 20px; background: #fff;">
+            <h1 style="text-align: center; color: #2c3e50; border-bottom: 2px solid #27ae60; padding-bottom: 10px; margin-bottom: 30px;">جدول مناوبات مناديب رمضان</h1>
+        `;
 
-        const cards = container.querySelectorAll('.shift-card:not(.exclude-from-pdf)');
-        
-        const pageBreaks = [];
-        for (let i = 2; i < cards.length; i += 2) {
-            const pb = document.createElement('div');
-            pb.className = 'html2pdf__page-break temp-pb'; 
-            container.insertBefore(pb, cards[i]);
-            pageBreaks.push(pb);
+        // المرور على الفترات 6 (تجاهل قائمة الانتظار تلقائياً)
+        for (let i = 0; i < shiftsConfig.length; i += 2) {
+            
+            // إضافة فاصل صفحات لكل ورقة (ما عدا الورقة الأولى)
+            if (i > 0) {
+                printHTML += `<div class="html2pdf__page-break" style="page-break-before: always; height: 0; display: block; width: 100%;"></div>`;
+            }
+            
+            printHTML += `<div style="display: block; width: 100%; clear: both;">`;
+            
+            // طباعة فترتين بجانب بعضهما في نفس الورقة
+            for(let j = 0; j < 2; j++) {
+                if (i + j < shiftsConfig.length) {
+                    const shift = shiftsConfig[i + j];
+                    const delegatesInShift = allDelegates.filter(d => d.shiftIds.includes(shift.id));
+                    
+                    // جلب أسماء المناديب في هذه الفترة
+                    let delegatesHTML = delegatesInShift.map(d => `
+                        <div style="background: #f9f9f9; padding: 12px; margin: 8px 0; border-right: 4px solid #27ae60; border-radius: 4px; border-left: 1px solid #eee; font-weight: bold; color: #333; font-size: 16px;">
+                            ${d.name}
+                        </div>
+                    `).join('');
+
+                    if(delegatesInShift.length === 0) {
+                        delegatesHTML = `<div style="text-align:center; color:#999; padding: 20px; font-size: 14px;">لا يوجد مناديب في هذه الفترة</div>`;
+                    }
+
+                    // تصميم بطاقة الفترة
+                    printHTML += `
+                    <div style="display: inline-block; width: 48%; vertical-align: top; border: 1px solid #ddd; border-radius: 10px; padding: 15px; box-sizing: border-box; margin: 0 0.5%;">
+                        <div style="font-weight: bold; background: #2c3e50; color: white; padding: 10px; border-radius: 5px; margin-bottom: 15px; text-align: center; font-size: 18px;">
+                            الفترة ${shift.id}<br><span style="font-size: 14px;" dir="ltr">${shift.time}</span>
+                        </div>
+                        <div>
+                            ${delegatesHTML}
+                        </div>
+                    </div>
+                    `;
+                }
+            }
+            
+            printHTML += `</div>`; // إغلاق صف الفترتين
         }
 
+        printHTML += `</div>`;
+
+        // إعدادات مكتبة الـ PDF
         const opt = { 
             margin: 10, 
             filename: 'جدول_رمضان.pdf', 
             image: { type: 'jpeg', quality: 1 },
-            html2canvas: { scale: 2, useCORS: true, scrollY: 0 }, 
+            html2canvas: { scale: 2, useCORS: true }, 
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
             pagebreak: { mode: ['css', 'legacy'] }
         };
 
-        setTimeout(() => {
-            html2pdf().set(opt).from(container).save().then(() => {
-                // إرجاع الوضع لطبيعته
-                container.classList.remove('pdf-mode');
-                pageBreaks.forEach(pb => pb.remove());
-                pdfBtn.innerHTML = originalText;
-                pdfBtn.disabled = false;
-            }).catch(err => {
-                console.error("PDF Error: ", err);
-                container.classList.remove('pdf-mode');
-                pageBreaks.forEach(pb => pb.remove());
-                pdfBtn.innerHTML = originalText;
-                pdfBtn.disabled = false;
-                alert("حدث خطأ أثناء تصدير الملف.");
-            });
-        }, 300);
+        // تمرير النص البرمجي الجاهز للمكتبة مباشرة
+        html2pdf().set(opt).from(printHTML).save().then(() => {
+            pdfBtn.innerHTML = originalText;
+            pdfBtn.disabled = false;
+        }).catch(err => {
+            console.error("PDF Error: ", err);
+            pdfBtn.innerHTML = originalText;
+            pdfBtn.disabled = false;
+            alert("حدث خطأ أثناء تصدير الملف.");
+        });
     }
 
     render();
