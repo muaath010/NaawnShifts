@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام توزيع مناديب رمضان - واتساب</title>
+    <title> Daily Shifts </title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         :root {
@@ -49,7 +49,7 @@
 <body>
 
 <div class="container">
-    <h1>🌙 نظام مناديب رمضان + إرسال واتساب</h1>
+    <h1> Daily Shifts </h1>
 
     <div class="controls">
         <div class="input-group">
@@ -205,7 +205,7 @@
             
             message = `أهلاً ${delegate.name} \nلديك مناوبات في الفترات التالية :\n\n${shiftsText}\n\nبالتوفيق!`;
         } else {
-            message = `أهلاً ${delegate.name} 🌙\nأنت حالياً في قائمة الانتظار (بدون فترة محددة). سنقوم بالتواصل معك قريباً لتحديد موعد مناوبتك!`;
+            message = `أهلاً ${delegate.name} \nأنت حالياً في قائمة الانتظار (بدون فترة محددة). سنقوم بالتواصل معك قريباً لتحديد موعد مناوبتك!`;
         }
         
         const url = `https://wa.me/${delegate.phone}?text=${encodeURIComponent(message)}`;
@@ -245,7 +245,7 @@
 
         let printHTML = `
         <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; direction: rtl; padding: 20px; background: #fff;">
-            <h1 style="text-align: center; color: #2c3e50; border-bottom: 2px solid #27ae60; padding-bottom: 10px; margin-bottom: 30px;">جدول مناوبات مناديب رمضان</h1>
+            <h1 style="text-align: center; color: #2c3e50; border-bottom: 2px solid #27ae60; padding-bottom: 10px; margin-bottom: 30px;">Shifts</h1>
         `;
 
         for (let i = 0; i < shiftsConfig.length; i += 2) {
@@ -279,7 +279,7 @@
 
         const opt = { 
             margin: 10, 
-            filename: 'جدول_رمضان.pdf', 
+            filename: 'جدول_المناوبات.pdf', 
             image: { type: 'jpeg', quality: 1 },
             html2canvas: { scale: 2, useCORS: true }, 
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
