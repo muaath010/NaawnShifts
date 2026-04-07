@@ -13,6 +13,7 @@
             --danger: #e74c3c;
             --light: #ecf0f1;
             --warning: #f39c12;
+            --blue: #2980b9;
         }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; margin: 0; padding: 20px; color: var(--primary); }
         .container { max-width: 1200px; margin: auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
@@ -25,9 +26,12 @@
         button:disabled { cursor: not-allowed; opacity: 0.7; }
         .btn-add { background: var(--accent); color: white; }
         .btn-random { background: #8e44ad; color: white; }
-        .btn-pdf { background: #e67e22; color: white; grid-column: span 2; }
+        .btn-pdf { background: #e67e22; color: white; }
+        .btn-sync { background: var(--blue); color: white; }
         .btn-whatsapp { background: var(--whatsapp); color: white; padding: 4px 8px; font-size: 11px; }
         
+        .action-buttons { grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }
+
         .shifts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px; }
         .shift-card { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 12px; }
         .shift-header { font-weight: bold; background: var(--primary); color: white; padding: 8px; border-radius: 5px; margin-bottom: 10px; text-align: center; }
@@ -57,22 +61,30 @@
             <textarea id="bulkInput" placeholder="لصق (اسم المندوب، الرقم) كل واحد في سطر..."></textarea>
             <button class="btn-add" onclick="addBulk()">📋 إضافة القائمة</button>
         </div>
-        <button class="btn-random" onclick="randomizeShifts()">🎲 توزيع عشوائي عادل</button>
-        <button id="pdfBtn" class="btn-pdf" onclick="downloadPDF()">📄 تصدير الجدول PDF</button>
+        
+        <div class="action-buttons">
+            <button class="btn-random" onclick="randomizeShifts()">🎲 توزيع عشوائي عادل</button>
+            <button id="pdfBtn" class="btn-pdf" onclick="downloadPDF()">📄 تصدير الجدول PDF</button>
+            <button id="syncBtn" class="btn-sync" onclick="saveToGoogleSheet()">☁️ حفظ في جوجل شيت</button>
+        </div>
     </div>
 
     <div class="shifts-grid" id="shiftsContainer"></div>
 </div>
 
 <script>
+    // إعدادات الفترات وتوقيت الإشعارات
     const shiftsConfig = [
-        { id: 1, time: "11:00 → 1:00" },
-        { id: 2, time: "1:00 → 3:20" },
-        { id: 3, time: "3:20 → 5:50" },
-        { id: 4, time: "6:50 → 9:30" },
-        { id: 5, time: "9:30 → 12:10" },
-        { id: 6, time: "12:10 → 3:00" }
+        { id: 1, time: "11:00 → 1:00", notify: "10:30" },
+        { id: 2, time: "1:00 → 3:20", notify: "12:30" },
+        { id: 3, time: "3:20 → 5:50", notify: "14:50" },
+        { id: 4, time: "6:50 → 9:30", notify: "18:20" },
+        { id: 5, time: "9:30 → 12:10", notify: "21:00" },
+        { id: 6, time: "12:10 → 3:00", notify: "23:40" }
     ];
+
+    // الرابط الخاص بك لجوجل شيت
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzpneX6JBUOcVxfKlmFdNKEr9PYljWhNGp2WmKrFXYgE7AkSjQwAOxwfokOLrLtWm6ABw/exec";
 
     let allDelegates = JSON.parse(localStorage.getItem('delegates_v3')) || [];
 
@@ -112,7 +124,7 @@
             container.appendChild(card);
         });
 
-        // إضافة قسم مخصص للمناديب بدون فترة (قائمة الانتظار)
+        // قائمة الانتظار
         const unassignedDelegates = allDelegates.filter(d => d.shiftIds.length === 0);
         
         const unassignedCard = document.createElement('div');
@@ -224,66 +236,47 @@
         render();
     }
 
-    // ✨ التعديل الجذري والنهائي لحل مشكلة الصفحة البيضاء وتقسيم الصفحات ✨
+    // تصدير PDF
     function downloadPDF() {
         const pdfBtn = document.getElementById('pdfBtn');
         const originalText = pdfBtn.innerHTML;
-        pdfBtn.innerHTML = '⏳ جاري تجهيز الملف... الرجاء الانتظار';
+        pdfBtn.innerHTML = '⏳ جاري تجهيز الملف...';
         pdfBtn.disabled = true;
 
-        // بناء قالب HTML مستقل ونظيف مخصص للطباعة فقط (لا يتأثر بالشاشة نهائياً)
         let printHTML = `
         <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; direction: rtl; padding: 20px; background: #fff;">
             <h1 style="text-align: center; color: #2c3e50; border-bottom: 2px solid #27ae60; padding-bottom: 10px; margin-bottom: 30px;">جدول مناوبات مناديب رمضان</h1>
         `;
 
-        // المرور على الفترات 6 (تجاهل قائمة الانتظار تلقائياً)
         for (let i = 0; i < shiftsConfig.length; i += 2) {
-            
-            // إضافة فاصل صفحات لكل ورقة (ما عدا الورقة الأولى)
-            if (i > 0) {
-                printHTML += `<div class="html2pdf__page-break" style="page-break-before: always; height: 0; display: block; width: 100%;"></div>`;
-            }
-            
+            if (i > 0) printHTML += `<div class="html2pdf__page-break" style="page-break-before: always; height: 0; display: block; width: 100%;"></div>`;
             printHTML += `<div style="display: block; width: 100%; clear: both;">`;
             
-            // طباعة فترتين بجانب بعضهما في نفس الورقة
             for(let j = 0; j < 2; j++) {
                 if (i + j < shiftsConfig.length) {
                     const shift = shiftsConfig[i + j];
                     const delegatesInShift = allDelegates.filter(d => d.shiftIds.includes(shift.id));
-                    
-                    // جلب أسماء المناديب في هذه الفترة
                     let delegatesHTML = delegatesInShift.map(d => `
                         <div style="background: #f9f9f9; padding: 12px; margin: 8px 0; border-right: 4px solid #27ae60; border-radius: 4px; border-left: 1px solid #eee; font-weight: bold; color: #333; font-size: 16px;">
                             ${d.name}
                         </div>
                     `).join('');
 
-                    if(delegatesInShift.length === 0) {
-                        delegatesHTML = `<div style="text-align:center; color:#999; padding: 20px; font-size: 14px;">لا يوجد مناديب في هذه الفترة</div>`;
-                    }
+                    if(delegatesInShift.length === 0) delegatesHTML = `<div style="text-align:center; color:#999; padding: 20px; font-size: 14px;">لا يوجد مناديب في هذه الفترة</div>`;
 
-                    // تصميم بطاقة الفترة
                     printHTML += `
                     <div style="display: inline-block; width: 48%; vertical-align: top; border: 1px solid #ddd; border-radius: 10px; padding: 15px; box-sizing: border-box; margin: 0 0.5%;">
                         <div style="font-weight: bold; background: #2c3e50; color: white; padding: 10px; border-radius: 5px; margin-bottom: 15px; text-align: center; font-size: 18px;">
                             الفترة ${shift.id}<br><span style="font-size: 14px;" dir="ltr">${shift.time}</span>
                         </div>
-                        <div>
-                            ${delegatesHTML}
-                        </div>
-                    </div>
-                    `;
+                        <div>${delegatesHTML}</div>
+                    </div>`;
                 }
             }
-            
-            printHTML += `</div>`; // إغلاق صف الفترتين
+            printHTML += `</div>`;
         }
-
         printHTML += `</div>`;
 
-        // إعدادات مكتبة الـ PDF
         const opt = { 
             margin: 10, 
             filename: 'جدول_رمضان.pdf', 
@@ -293,15 +286,64 @@
             pagebreak: { mode: ['css', 'legacy'] }
         };
 
-        // تمرير النص البرمجي الجاهز للمكتبة مباشرة
         html2pdf().set(opt).from(printHTML).save().then(() => {
-            pdfBtn.innerHTML = originalText;
-            pdfBtn.disabled = false;
+            pdfBtn.innerHTML = originalText; pdfBtn.disabled = false;
         }).catch(err => {
-            console.error("PDF Error: ", err);
-            pdfBtn.innerHTML = originalText;
-            pdfBtn.disabled = false;
+            console.error("PDF Error: ", err); pdfBtn.innerHTML = originalText; pdfBtn.disabled = false;
             alert("حدث خطأ أثناء تصدير الملف.");
+        });
+    }
+
+    // ✨ دالة الربط السحري: إرسال التوزيع إلى جوجل شيت ✨
+    function saveToGoogleSheet() {
+        const btn = document.getElementById('syncBtn');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '⏳ جاري الإرسال للسيرفر...';
+        btn.disabled = true;
+
+        let payload = [];
+
+        // تجميع بيانات المناديب المرتبطين بفترات
+        allDelegates.forEach(d => {
+            if (d.shiftIds && d.shiftIds.length > 0) {
+                d.shiftIds.forEach(sId => {
+                    const shiftData = shiftsConfig.find(s => s.id === sId);
+                    payload.push({
+                        name: d.name,
+                        phone: d.phone || "",
+                        shiftId: sId,
+                        shiftTime: shiftData.time,
+                        notifyTime: shiftData.notify
+                    });
+                });
+            }
+        });
+
+        if (payload.length === 0) {
+            alert("⚠️ لم تقم بتوزيع أي مندوب على الفترات للحفظ!");
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            return;
+        }
+
+        // إرسال البيانات
+        fetch(WEB_APP_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // لتجنب مشاكل CORS
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert("✅ تم رفع وحفظ الجدول في جوجل شيت بنجاح! ستبدأ تنبيهات واتساب في الخلفية وفقاً للجدول.");
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        })
+        .catch(error => {
+            // أحياناً جوجل شيت يمنع الرد على المتصفح (CORS) ولكن البيانات تصل، لذلك نعرض رسالة نجاح تقريبية
+            console.log("تم تنفيذ الطلب", error);
+            alert("تم إرسال الأمر بنجاح (يرجى التحقق من جوجل شيت للتأكد من وصول الأسماء).");
+            btn.innerHTML = originalText;
+            btn.disabled = false;
         });
     }
 
