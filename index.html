@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> Daily Shifts </title>
+    <title>نظام توزيع مناديب نعاون </title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         :root {
@@ -14,6 +14,8 @@
             --light: #ecf0f1;
             --warning: #f39c12;
             --blue: #2980b9;
+            --morning: #3498db;
+            --evening: #8e44ad;
         }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; margin: 0; padding: 20px; color: var(--primary); }
         .container { max-width: 1200px; margin: auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
@@ -34,7 +36,9 @@
 
         .shifts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px; }
         .shift-card { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 12px; }
-        .shift-header { font-weight: bold; background: var(--primary); color: white; padding: 8px; border-radius: 5px; margin-bottom: 10px; text-align: center; }
+        .shift-header { font-weight: bold; color: white; padding: 8px; border-radius: 5px; margin-bottom: 10px; text-align: center; }
+        .header-morning { background: var(--morning); }
+        .header-evening { background: var(--evening); }
         
         .delegate-item { background: #f9f9f9; padding: 10px; margin: 8px 0; border-right: 4px solid var(--accent); border-radius: 4px; border-left: 1px solid #eee; }
         .item-main { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
@@ -49,7 +53,7 @@
 <body>
 
 <div class="container">
-    <h1> Daily Shifts </h1>
+    <h1> نظام مناوبات مناديب نعاون </h1>
 
     <div class="controls">
         <div class="input-group">
@@ -63,7 +67,7 @@
         </div>
         
         <div class="action-buttons">
-            <button class="btn-random" onclick="randomizeShifts()">🎲 توزيع عشوائي عادل</button>
+            <button class="btn-random" onclick="randomizeShifts()">🎲 توزيع ذكي (شفتين / بدون توالي)</button>
             <button id="pdfBtn" class="btn-pdf" onclick="downloadPDF()">📄 تصدير الجدول PDF</button>
             <button id="syncBtn" class="btn-sync" onclick="saveToGoogleSheet()">☁️ حفظ في جوجل شيت</button>
         </div>
@@ -73,20 +77,20 @@
 </div>
 
 <script>
-    // إعدادات الفترات وتوقيت الإشعارات
+    // 1. إعدادات الفترات الجديدة (8 صباحاً إلى 1 ليلاً) وأوقات التنبيه المرتبطة بها
     const shiftsConfig = [
-        { id: 1, time: "11:00 → 1:00", notify: "10:30" },
-        { id: 2, time: "1:00 → 3:20", notify: "12:30" },
-        { id: 3, time: "3:20 → 5:50", notify: "14:50" },
-        { id: 4, time: "6:50 → 9:30", notify: "18:20" },
-        { id: 5, time: "9:30 → 12:10", notify: "21:00" },
-        { id: 6, time: "12:10 → 3:00", notify: "23:40" }
+        { id: 1, time: "08:00 ص → 11:00 ص", type: "morning", notify: "07:30" },
+        { id: 2, time: "11:00 ص → 02:00 م", type: "morning", notify: "10:30" },
+        { id: 3, time: "02:00 م → 05:00 م", type: "morning", notify: "13:30" },
+        { id: 4, time: "05:00 م → 07:30 م", type: "evening", notify: "16:30" },
+        { id: 5, time: "07:30 م → 10:00 م", type: "evening", notify: "19:00" },
+        { id: 6, time: "10:00 م → 01:00 ص", type: "evening", notify: "21:30" }
     ];
 
     // الرابط الخاص بك لجوجل شيت
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzpneX6JBUOcVxfKlmFdNKEr9PYljWhNGp2WmKrFXYgE7AkSjQwAOxwfokOLrLtWm6ABw/exec";
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzuFpaL7zKcDs3o9dkY6IjLY2-kKVm9InfKL_mjuWWrNHgIlsZzkDVbNpPokVimlQq-CA/exec";
 
-    let allDelegates = JSON.parse(localStorage.getItem('delegates_v3')) || [];
+    let allDelegates = JSON.parse(localStorage.getItem('delegates_v5')) || [];
 
     function render() {
         const container = document.getElementById('shiftsContainer');
@@ -94,11 +98,16 @@
 
         shiftsConfig.forEach(shift => {
             const delegatesInShift = allDelegates.filter(d => d.shiftIds.includes(shift.id));
+            const headerClass = shift.type === 'morning' ? 'header-morning' : 'header-evening';
+            const shiftLabel = shift.type === 'morning' ? 'صباحي' : 'مسائي';
             
             const card = document.createElement('div');
             card.className = 'shift-card';
             card.innerHTML = `
-                <div class="shift-header">الفترة ${shift.id}<br><small dir="ltr">${shift.time}</small></div>
+                <div class="shift-header ${headerClass}">
+                    الفترة ${shift.id} (${shiftLabel}) - العدد: ${delegatesInShift.length}<br>
+                    <small dir="ltr">${shift.time}</small>
+                </div>
                 <div class="delegate-list">
                     ${delegatesInShift.map(d => `
                         <div class="delegate-item">
@@ -126,7 +135,6 @@
 
         // قائمة الانتظار
         const unassignedDelegates = allDelegates.filter(d => d.shiftIds.length === 0);
-        
         const unassignedCard = document.createElement('div');
         unassignedCard.className = 'shift-card';
         unassignedCard.style.border = '2px dashed var(--warning)';
@@ -157,7 +165,7 @@
         `;
         container.appendChild(unassignedCard);
 
-        localStorage.setItem('delegates_v3', JSON.stringify(allDelegates));
+        localStorage.setItem('delegates_v5', JSON.stringify(allDelegates));
     }
 
     function addSingle() {
@@ -188,28 +196,20 @@
 
     function sendWhatsApp(delegateId) {
         const delegate = allDelegates.find(d => d.id === delegateId);
-        
-        if (!delegate.phone) {
-            alert("يرجى إضافة رقم جوال لهذا المندوب أولاً");
-            return;
-        }
+        if (!delegate.phone) { alert("يرجى إضافة رقم جوال لهذا المندوب أولاً"); return; }
 
         let message = "";
-        
         if (delegate.shiftIds && delegate.shiftIds.length > 0) {
             const sortedShifts = [...delegate.shiftIds].sort((a, b) => a - b);
             let shiftsText = sortedShifts.map(id => {
                 const shift = shiftsConfig.find(s => s.id === id);
                 return `▪️ الفترة رقم (${shift.id}): من ${shift.time}`;
             }).join('\n');
-            
-            message = `أهلاً ${delegate.name} \nلديك مناوبات في الفترات التالية :\n\n${shiftsText}\n\nبالتوفيق!`;
+            message = `أهلاً ${delegate.name} \nلديك مناوبات في الفترات التالية:\n\n${shiftsText}\n\nبالتوفيق!`;
         } else {
-            message = `أهلاً ${delegate.name} \nأنت حالياً في قائمة الانتظار (بدون فترة محددة). سنقوم بالتواصل معك قريباً لتحديد موعد مناوبتك!`;
+            message = `أهلاً ${delegate.name} \nأنت حالياً في قائمة الانتظار. سنقوم بالتواصل معك قريباً لتحديد موعد مناوبتك!`;
         }
-        
-        const url = `https://wa.me/${delegate.phone}?text=${encodeURIComponent(message)}`;
-        window.open(url, '_blank');
+        window.open(`https://wa.me/${delegate.phone}?text=${encodeURIComponent(message)}`, '_blank');
     }
 
     function toggleShift(delegateId, shiftId) {
@@ -225,65 +225,110 @@
     }
 
     function deleteDelegate(id) {
-        if(confirm("حذف المندوب؟")) {
+        if(confirm("هل أنت متأكد من حذف المندوب؟")) {
             allDelegates = allDelegates.filter(d => d.id !== id);
             render();
         }
     }
 
+    // 2. خوارزمية التوزيع الذكي (شفتين للمندوب، لا للتتابع، 5 مسائي، 3 صباحي)
     function randomizeShifts() {
-        allDelegates.forEach((d, index) => { d.shiftIds = [(index % 6) + 1]; });
+        if (allDelegates.length === 0) return alert("أضف مناديب أولاً!");
+
+        allDelegates.forEach(d => d.shiftIds = []);
+        let delegates = [...allDelegates];
+
+        delegates.forEach(delegate => {
+            let assigned = 0;
+            let attempts = 0;
+            
+            while(assigned < 2 && attempts < 20) {
+                attempts++;
+                
+                let shiftNeeds = shiftsConfig.map(s => {
+                    let currentCount = allDelegates.filter(d => d.shiftIds.includes(s.id)).length;
+                    let target = (s.type === 'evening') ? 5 : 3;
+                    return { id: s.id, need: target - currentCount };
+                });
+
+                shiftNeeds.sort((a,b) => (b.need - a.need) || (Math.random() - 0.5));
+
+                for (let s of shiftNeeds) {
+                    if (assigned >= 2) break;
+                    let sId = s.id;
+
+                    if (delegate.shiftIds.includes(sId)) continue;
+
+                    // منع الشفتات المتتالية
+                    if (delegate.shiftIds.length === 1) {
+                        if (Math.abs(delegate.shiftIds[0] - sId) <= 1) continue;
+                    }
+
+                    delegate.shiftIds.push(sId);
+                    assigned++;
+                    break; 
+                }
+            }
+            delegate.shiftIds.sort((a,b) => a - b);
+        });
         render();
     }
 
-    // تصدير PDF
+    // 3. تصدير PDF احترافي (شفتين فقط في كل صفحة بالعرض لمنع الانقسام)
     function downloadPDF() {
         const pdfBtn = document.getElementById('pdfBtn');
         const originalText = pdfBtn.innerHTML;
-        pdfBtn.innerHTML = '⏳ جاري تجهيز الملف...';
+        pdfBtn.innerHTML = '⏳ جاري التجهيز...';
         pdfBtn.disabled = true;
 
-        let printHTML = `
-        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; direction: rtl; padding: 20px; background: #fff;">
-            <h1 style="text-align: center; color: #2c3e50; border-bottom: 2px solid #27ae60; padding-bottom: 10px; margin-bottom: 30px;">Shifts</h1>
-        `;
+        let printHTML = `<div style="font-family: 'Segoe UI', Tahoma, sans-serif; direction: rtl; background: #fff;">`;
 
         for (let i = 0; i < shiftsConfig.length; i += 2) {
-            if (i > 0) printHTML += `<div class="html2pdf__page-break" style="page-break-before: always; height: 0; display: block; width: 100%;"></div>`;
-            printHTML += `<div style="display: block; width: 100%; clear: both;">`;
+            printHTML += `<div style="page-break-after: always; padding: 20px; box-sizing: border-box; min-height: 200mm;">`;
+            
+            if (i === 0) {
+                printHTML += `<h1 style="text-align: center; color: #2c3e50; border-bottom: 2px solid #27ae60; padding-bottom: 10px; margin-bottom: 25px;">جدول مناوبات مناديب نعاون</h1>`;
+            } else {
+                printHTML += `<div style="height: 30px;"></div>`;
+            }
+
+            printHTML += `<div style="display: flex; justify-content: space-between; gap: 20px;">`;
             
             for(let j = 0; j < 2; j++) {
                 if (i + j < shiftsConfig.length) {
                     const shift = shiftsConfig[i + j];
                     const delegatesInShift = allDelegates.filter(d => d.shiftIds.includes(shift.id));
+                    const headerBg = shift.type === 'morning' ? '#3498db' : '#8e44ad';
+                    
                     let delegatesHTML = delegatesInShift.map(d => `
-                        <div style="background: #f9f9f9; padding: 12px; margin: 8px 0; border-right: 4px solid #27ae60; border-radius: 4px; border-left: 1px solid #eee; font-weight: bold; color: #333; font-size: 16px;">
+                        <div style="background: #f9f9f9; padding: 12px; margin: 8px 0; border-right: 4px solid ${headerBg}; border-radius: 4px; border-left: 1px solid #eee; font-weight: bold; color: #333; font-size: 16px;">
                             ${d.name}
                         </div>
                     `).join('');
 
-                    if(delegatesInShift.length === 0) delegatesHTML = `<div style="text-align:center; color:#999; padding: 20px; font-size: 14px;">لا يوجد مناديب في هذه الفترة</div>`;
+                    if(delegatesInShift.length === 0) delegatesHTML = `<div style="text-align:center; color:#999; padding: 20px;">لا يوجد مناديب</div>`;
 
                     printHTML += `
-                    <div style="display: inline-block; width: 48%; vertical-align: top; border: 1px solid #ddd; border-radius: 10px; padding: 15px; box-sizing: border-box; margin: 0 0.5%;">
-                        <div style="font-weight: bold; background: #2c3e50; color: white; padding: 10px; border-radius: 5px; margin-bottom: 15px; text-align: center; font-size: 18px;">
-                            الفترة ${shift.id}<br><span style="font-size: 14px;" dir="ltr">${shift.time}</span>
+                    <div style="flex: 1; border: 1px solid #ddd; border-radius: 10px; padding: 15px; box-sizing: border-box;">
+                        <div style="font-weight: bold; background: ${headerBg}; color: white; padding: 10px; border-radius: 5px; margin-bottom: 15px; text-align: center; font-size: 18px;">
+                            الفترة ${shift.id} - المجموع: ${delegatesInShift.length}<br>
+                            <span style="font-size: 14px;" dir="ltr">${shift.time}</span>
                         </div>
                         <div>${delegatesHTML}</div>
                     </div>`;
                 }
             }
-            printHTML += `</div>`;
+            printHTML += `</div></div>`;
         }
         printHTML += `</div>`;
 
         const opt = { 
-            margin: 10, 
-            filename: 'جدول_المناوبات.pdf', 
+            margin: 0, 
+            filename: 'جدول__المناوبات.pdf', 
             image: { type: 'jpeg', quality: 1 },
             html2canvas: { scale: 2, useCORS: true }, 
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
-            pagebreak: { mode: ['css', 'legacy'] }
+            pagebreak: { mode: 'css' }
         };
 
         html2pdf().set(opt).from(printHTML).save().then(() => {
@@ -294,16 +339,14 @@
         });
     }
 
-    // ✨ دالة الربط السحري: إرسال التوزيع إلى جوجل شيت ✨
+    // 4. الحفظ في جوجل شيت
     function saveToGoogleSheet() {
         const btn = document.getElementById('syncBtn');
         const originalText = btn.innerHTML;
-        btn.innerHTML = '⏳ جاري الإرسال للسيرفر...';
+        btn.innerHTML = '⏳ جاري الإرسال لجوجل...';
         btn.disabled = true;
 
         let payload = [];
-
-        // تجميع بيانات المناديب المرتبطين بفترات
         allDelegates.forEach(d => {
             if (d.shiftIds && d.shiftIds.length > 0) {
                 d.shiftIds.forEach(sId => {
@@ -321,29 +364,24 @@
 
         if (payload.length === 0) {
             alert("⚠️ لم تقم بتوزيع أي مندوب على الفترات للحفظ!");
-            btn.innerHTML = originalText;
-            btn.disabled = false;
+            btn.innerHTML = originalText; btn.disabled = false;
             return;
         }
 
-        // إرسال البيانات
         fetch(WEB_APP_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // لتجنب مشاكل CORS
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify(payload)
         })
         .then(response => response.json())
         .then(data => {
-            alert("✅ تم رفع وحفظ الجدول في جوجل شيت بنجاح! ستبدأ تنبيهات واتساب في الخلفية وفقاً للجدول.");
-            btn.innerHTML = originalText;
-            btn.disabled = false;
+            alert("✅ تم الحفظ في جوجل شيت! الإشعارات ستعمل الآن في الخلفية.");
+            btn.innerHTML = originalText; btn.disabled = false;
         })
         .catch(error => {
-            // أحياناً جوجل شيت يمنع الرد على المتصفح (CORS) ولكن البيانات تصل، لذلك نعرض رسالة نجاح تقريبية
-            console.log("تم تنفيذ الطلب", error);
-            alert("تم إرسال الأمر بنجاح (يرجى التحقق من جوجل شيت للتأكد من وصول الأسماء).");
-            btn.innerHTML = originalText;
-            btn.disabled = false;
+            console.log("تم الإرسال (CORS ignored)", error);
+            alert("✅ تم إرسال الأمر! يرجى التحقق من الجدول للتأكد.");
+            btn.innerHTML = originalText; btn.disabled = false;
         });
     }
 
