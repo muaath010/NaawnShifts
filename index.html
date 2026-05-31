@@ -16,6 +16,7 @@
             --blue: #2980b9;
             --morning: #3498db;
             --evening: #8e44ad;
+            --backup: #e67e22; /* لون خاص للاحتياطي */
         }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; margin: 0; padding: 20px; color: var(--primary); }
         .container { max-width: 1200px; margin: auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
@@ -41,11 +42,13 @@
         .header-evening { background: var(--evening); }
         
         .delegate-item { background: #f9f9f9; padding: 10px; margin: 8px 0; border-right: 4px solid var(--accent); border-radius: 4px; border-left: 1px solid #eee; }
+        .delegate-item.backup-item { border-right: 4px solid var(--backup); background: #fffaf0; } /* تمييز الاحتياطي */
         .item-main { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
         .delegate-name { font-weight: bold; }
         
         .checkbox-group { display: flex; flex-wrap: wrap; gap: 4px; }
         .checkbox-group label { background: #eee; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; }
+        .lbl-backup { border: 1px dashed var(--backup); } /* شكل زر الاحتياطي */
         
         textarea, input[type="text"] { padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-family: inherit; }
     </style>
@@ -77,27 +80,33 @@
 </div>
 
 <script>
-    // 1. إعدادات الفترات الجديدة (8 صباحاً إلى 1 ليلاً) وأوقات التنبيه المرتبطة بها
+    // 1. إعدادات الفترات الجديدة (8 صباحاً إلى 1 ليلاً) وأوقات التنبيه المرتبطة بها + تحديد الفترات التي تحتاج احتياطي
     const shiftsConfig = [
-        { id: 1, time: "08:00 ص → 11:00 ص", type: "morning", notify: "07:30" },
-        { id: 2, time: "11:00 ص → 02:00 م", type: "morning", notify: "10:30" },
-        { id: 3, time: "02:00 م → 05:00 م", type: "morning", notify: "13:30" },
-        { id: 4, time: "05:00 م → 07:30 م", type: "evening", notify: "16:30" },
-        { id: 5, time: "07:30 م → 10:00 م", type: "evening", notify: "19:00" },
-        { id: 6, time: "10:00 م → 01:00 ص", type: "evening", notify: "21:30" }
+        { id: 1, time: "08:00 ص → 11:00 ص", type: "morning", notify: "07:30", needsBackup: true },
+        { id: 2, time: "11:00 ص → 02:00 م", type: "morning", notify: "10:30", needsBackup: true },
+        { id: 3, time: "02:00 م → 05:00 م", type: "morning", notify: "13:30", needsBackup: true },
+        { id: 4, time: "05:00 م → 07:30 م", type: "evening", notify: "16:30", needsBackup: false },
+        { id: 5, time: "07:30 م → 10:00 م", type: "evening", notify: "19:00", needsBackup: false },
+        { id: 6, time: "10:00 م → 01:00 ص", type: "evening", notify: "21:30", needsBackup: false }
     ];
 
     // الرابط الخاص بك لجوجل شيت
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxfhcSO-bpIHIg-uHCukNfIVJC2mU4qY2FPgQaNprNeXyCvmBLW2xqOacL_E-5hRil-kA/exec";
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx-COx34fEp2St1rCw3DnCBJ64bj9yWeQFAihBf9GROi7_HRyoCQvetaSIVHEivUfBJjg/exec";
 
     let allDelegates = JSON.parse(localStorage.getItem('delegates_v5')) || [];
+    
+    // تحديث البيانات القديمة لتشمل مصفوفة الاحتياطي لكي لا يحدث خطأ برمجي
+    allDelegates.forEach(d => { if(!d.backupShiftIds) d.backupShiftIds = []; });
 
     function render() {
         const container = document.getElementById('shiftsContainer');
         container.innerHTML = '';
 
         shiftsConfig.forEach(shift => {
-            const delegatesInShift = allDelegates.filter(d => d.shiftIds.includes(shift.id));
+            const primaryDelegates = allDelegates.filter(d => d.shiftIds.includes(shift.id));
+            const backupDelegates = allDelegates.filter(d => d.backupShiftIds.includes(shift.id));
+            const allInShift = [...primaryDelegates, ...backupDelegates];
+
             const headerClass = shift.type === 'morning' ? 'header-morning' : 'header-evening';
             const shiftLabel = shift.type === 'morning' ? 'صباحي' : 'مسائي';
             
@@ -105,36 +114,49 @@
             card.className = 'shift-card';
             card.innerHTML = `
                 <div class="shift-header ${headerClass}">
-                    الفترة ${shift.id} (${shiftLabel}) - العدد: ${delegatesInShift.length}<br>
+                    الفترة ${shift.id} (${shiftLabel}) - العدد: ${primaryDelegates.length}<br>
                     <small dir="ltr">${shift.time}</small>
                 </div>
                 <div class="delegate-list">
-                    ${delegatesInShift.map(d => `
-                        <div class="delegate-item">
+                    ${allInShift.map(d => {
+                        let isThisBackup = d.backupShiftIds.includes(shift.id);
+                        return `
+                        <div class="delegate-item ${isThisBackup ? 'backup-item' : ''}">
                             <div class="item-main">
-                                <span class="delegate-name">${d.name}</span>
+                                <span class="delegate-name">${d.name} ${isThisBackup ? '🛡️ (احتياطي)' : ''}</span>
                                 <div style="display:flex; gap:5px;">
                                     <button class="btn-whatsapp" onclick="sendWhatsApp('${d.id}')">💬 واتساب</button>
                                     <button style="background:none; color:red; cursor:pointer;" onclick="deleteDelegate('${d.id}')">×</button>
                                 </div>
                             </div>
                             <div class="checkbox-group">
-                                ${shiftsConfig.map(s => `
-                                    <label style="background: ${d.shiftIds.includes(s.id) ? '#27ae60' : '#eee'}; color: ${d.shiftIds.includes(s.id) ? 'white' : 'black'}">
-                                        <input type="checkbox" style="display:none" onchange="toggleShift('${d.id}', ${s.id})" ${d.shiftIds.includes(s.id) ? 'checked' : ''}>
+                                ${shiftsConfig.map(s => {
+                                    let isP = d.shiftIds.includes(s.id);
+                                    let isB = d.backupShiftIds.includes(s.id);
+                                    let html = `
+                                    <label style="background: ${isP ? '#27ae60' : '#eee'}; color: ${isP ? 'white' : 'black'}">
+                                        <input type="checkbox" style="display:none" onchange="toggleShift('${d.id}', ${s.id}, 'primary')" ${isP ? 'checked' : ''}>
                                         ${s.id}
-                                    </label>
-                                `).join('')}
+                                    </label>`;
+                                    if(s.needsBackup) {
+                                        html += `
+                                        <label class="lbl-backup" style="background: ${isB ? 'var(--backup)' : '#eee'}; color: ${isB ? 'white' : 'black'}">
+                                            <input type="checkbox" style="display:none" onchange="toggleShift('${d.id}', ${s.id}, 'backup')" ${isB ? 'checked' : ''}>
+                                            🛡️ ${s.id}
+                                        </label>`;
+                                    }
+                                    return html;
+                                }).join('')}
                             </div>
                         </div>
-                    `).join('')}
+                    `}).join('')}
                 </div>
             `;
             container.appendChild(card);
         });
 
         // قائمة الانتظار
-        const unassignedDelegates = allDelegates.filter(d => d.shiftIds.length === 0);
+        const unassignedDelegates = allDelegates.filter(d => d.shiftIds.length === 0 && d.backupShiftIds.length === 0);
         const unassignedCard = document.createElement('div');
         unassignedCard.className = 'shift-card';
         unassignedCard.style.border = '2px dashed var(--warning)';
@@ -151,12 +173,21 @@
                             </div>
                         </div>
                         <div class="checkbox-group">
-                            ${shiftsConfig.map(s => `
+                            ${shiftsConfig.map(s => {
+                                let html = `
                                 <label style="background: #eee; color: black">
-                                    <input type="checkbox" style="display:none" onchange="toggleShift('${d.id}', ${s.id})">
+                                    <input type="checkbox" style="display:none" onchange="toggleShift('${d.id}', ${s.id}, 'primary')">
                                     ${s.id}
-                                </label>
-                            `).join('')}
+                                </label>`;
+                                if(s.needsBackup) {
+                                    html += `
+                                    <label class="lbl-backup" style="background: #eee; color: black">
+                                        <input type="checkbox" style="display:none" onchange="toggleShift('${d.id}', ${s.id}, 'backup')">
+                                        🛡️ ${s.id}
+                                    </label>`;
+                                }
+                                return html;
+                            }).join('')}
                         </div>
                     </div>
                 `).join('')}
@@ -172,7 +203,7 @@
         const name = document.getElementById('delegateName').value;
         const phone = document.getElementById('delegatePhone').value;
         if (!name) return;
-        allDelegates.push({ id: Date.now().toString(), name: name, phone: phone, shiftIds: [] });
+        allDelegates.push({ id: Date.now().toString(), name: name, phone: phone, shiftIds: [], backupShiftIds: [] });
         document.getElementById('delegateName').value = '';
         document.getElementById('delegatePhone').value = '';
         render();
@@ -187,7 +218,8 @@
                 id: Math.random().toString(36).substr(2, 9), 
                 name: parts[0].trim(), 
                 phone: parts[1] ? parts[1].trim() : "", 
-                shiftIds: [] 
+                shiftIds: [],
+                backupShiftIds: []
             });
         });
         document.getElementById('bulkInput').value = '';
@@ -198,27 +230,55 @@
         const delegate = allDelegates.find(d => d.id === delegateId);
         if (!delegate.phone) { alert("يرجى إضافة رقم جوال لهذا المندوب أولاً"); return; }
 
-        let message = "";
+        let message = `أهلاً ${delegate.name} \n\n`;
+        let hasDuty = false;
+
         if (delegate.shiftIds && delegate.shiftIds.length > 0) {
+            hasDuty = true;
             const sortedShifts = [...delegate.shiftIds].sort((a, b) => a - b);
             let shiftsText = sortedShifts.map(id => {
                 const shift = shiftsConfig.find(s => s.id === id);
                 return `▪️ الفترة رقم (${shift.id}): من ${shift.time}`;
             }).join('\n');
-            message = `أهلاً ${delegate.name} \nلديك مناوبات في الفترات التالية:\n\n${shiftsText}\n\nبالتوفيق!`;
+            message += `✅ *مناوباتك الأساسية:*\n${shiftsText}\n\n`;
+        }
+        
+        if (delegate.backupShiftIds && delegate.backupShiftIds.length > 0) {
+            hasDuty = true;
+            const sortedBackup = [...delegate.backupShiftIds].sort((a, b) => a - b);
+            let backupText = sortedBackup.map(id => {
+                const shift = shiftsConfig.find(s => s.id === id);
+                return `▪️ الفترة رقم (${shift.id}): من ${shift.time}`;
+            }).join('\n');
+            message += `🛡️ *مناوباتك (كابتن احتياطي):*\n${backupText}\n*(يرجى الجاهزية التامة في هذه الفترات لتفادي المخالفات)*\n\n`;
+        }
+        
+        if (hasDuty) {
+            message += `بالتوفيق!`;
         } else {
             message = `أهلاً ${delegate.name} \nأنت حالياً في قائمة الانتظار. سنقوم بالتواصل معك قريباً لتحديد موعد مناوبتك!`;
         }
+        
         window.open(`https://wa.me/${delegate.phone}?text=${encodeURIComponent(message)}`, '_blank');
     }
 
-    function toggleShift(delegateId, shiftId) {
+    function toggleShift(delegateId, shiftId, type = 'primary') {
         const delegate = allDelegates.find(d => d.id === delegateId);
         if (delegate) {
-            if (delegate.shiftIds.includes(shiftId)) {
-                delegate.shiftIds = delegate.shiftIds.filter(id => id !== shiftId);
+            if (type === 'primary') {
+                delegate.backupShiftIds = delegate.backupShiftIds.filter(id => id !== shiftId); // حذفه من الاحتياطي لنفس الفترة إن وجد
+                if (delegate.shiftIds.includes(shiftId)) {
+                    delegate.shiftIds = delegate.shiftIds.filter(id => id !== shiftId);
+                } else {
+                    delegate.shiftIds.push(shiftId);
+                }
             } else {
-                delegate.shiftIds.push(shiftId);
+                delegate.shiftIds = delegate.shiftIds.filter(id => id !== shiftId); // حذفه من الأساسي لنفس الفترة إن وجد
+                if (delegate.backupShiftIds.includes(shiftId)) {
+                    delegate.backupShiftIds = delegate.backupShiftIds.filter(id => id !== shiftId);
+                } else {
+                    delegate.backupShiftIds.push(shiftId);
+                }
             }
             render();
         }
@@ -235,9 +295,10 @@
     function randomizeShifts() {
         if (allDelegates.length === 0) return alert("أضف مناديب أولاً!");
 
-        allDelegates.forEach(d => d.shiftIds = []);
+        allDelegates.forEach(d => { d.shiftIds = []; d.backupShiftIds = []; });
         let delegates = [...allDelegates];
 
+        // توزيع الأساسيين أولاً
         delegates.forEach(delegate => {
             let assigned = 0;
             let attempts = 0;
@@ -271,6 +332,16 @@
             }
             delegate.shiftIds.sort((a,b) => a - b);
         });
+
+        // توزيع كابتن احتياطي واحد للفترات 1، 2، 3 بشكل عشوائي
+        [1, 2, 3].forEach(sId => {
+            let availableForBackup = delegates.filter(d => !d.shiftIds.includes(sId) && d.shiftIds.length < 3);
+            if(availableForBackup.length > 0) {
+                let randomBackup = availableForBackup[Math.floor(Math.random() * availableForBackup.length)];
+                randomBackup.backupShiftIds.push(sId);
+            }
+        });
+
         render();
     }
 
@@ -297,24 +368,31 @@
             for(let j = 0; j < 2; j++) {
                 if (i + j < shiftsConfig.length) {
                     const shift = shiftsConfig[i + j];
-                    const delegatesInShift = allDelegates.filter(d => d.shiftIds.includes(shift.id));
+                    const primary = allDelegates.filter(d => d.shiftIds.includes(shift.id));
+                    const backups = allDelegates.filter(d => d.backupShiftIds.includes(shift.id));
                     const headerBg = shift.type === 'morning' ? '#3498db' : '#8e44ad';
                     
-                    let delegatesHTML = delegatesInShift.map(d => `
+                    let delegatesHTML = primary.map(d => `
                         <div style="background: #f9f9f9; padding: 12px; margin: 8px 0; border-right: 4px solid ${headerBg}; border-radius: 4px; border-left: 1px solid #eee; font-weight: bold; color: #333; font-size: 16px;">
                             ${d.name}
                         </div>
                     `).join('');
 
-                    if(delegatesInShift.length === 0) delegatesHTML = `<div style="text-align:center; color:#999; padding: 20px;">لا يوجد مناديب</div>`;
+                    let backupsHTML = backups.map(d => `
+                        <div style="background: #fffaf0; padding: 12px; margin: 8px 0; border-right: 4px solid var(--backup); border-radius: 4px; border-left: 1px solid #eee; font-weight: bold; color: #d35400; font-size: 16px;">
+                            🛡️ ${d.name} (احتياطي)
+                        </div>
+                    `).join('');
+
+                    if(primary.length === 0 && backups.length === 0) delegatesHTML = `<div style="text-align:center; color:#999; padding: 20px;">لا يوجد مناديب</div>`;
 
                     printHTML += `
                     <div style="flex: 1; border: 1px solid #ddd; border-radius: 10px; padding: 15px; box-sizing: border-box;">
                         <div style="font-weight: bold; background: ${headerBg}; color: white; padding: 10px; border-radius: 5px; margin-bottom: 15px; text-align: center; font-size: 18px;">
-                            الفترة ${shift.id} - المجموع: ${delegatesInShift.length}<br>
+                            الفترة ${shift.id} - المجموع: ${primary.length}<br>
                             <span style="font-size: 14px;" dir="ltr">${shift.time}</span>
                         </div>
-                        <div>${delegatesHTML}</div>
+                        <div>${delegatesHTML}${backupsHTML}</div>
                     </div>`;
                 }
             }
@@ -356,7 +434,22 @@
                         phone: d.phone || "",
                         shiftId: sId,
                         shiftTime: shiftData.time,
-                        notifyTime: shiftData.notify
+                        notifyTime: shiftData.notify,
+                        isBackup: false
+                    });
+                });
+            }
+            
+            if (d.backupShiftIds && d.backupShiftIds.length > 0) {
+                d.backupShiftIds.forEach(sId => {
+                    const shiftData = shiftsConfig.find(s => s.id === sId);
+                    payload.push({
+                        name: d.name,
+                        phone: d.phone || "",
+                        shiftId: sId,
+                        shiftTime: shiftData.time,
+                        notifyTime: shiftData.notify,
+                        isBackup: true
                     });
                 });
             }
