@@ -31,9 +31,10 @@
         .btn-random { background: #8e44ad; color: white; }
         .btn-pdf { background: #e67e22; color: white; }
         .btn-sync { background: var(--blue); color: white; }
+        .btn-print { background: #34495e; color: white; }
         .btn-whatsapp { background: var(--whatsapp); color: white; padding: 4px 8px; font-size: 11px; }
         
-        .action-buttons { grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }
+        .action-buttons { grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 15px; }
 
         .shifts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px; }
         .shift-card { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 12px; }
@@ -51,6 +52,11 @@
         .lbl-backup { border: 1px dashed var(--backup); } /* شكل زر الاحتياطي */
         
         textarea, input[type="text"] { padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-family: inherit; }
+        @media print {
+    .controls { display: none !important; }
+    body { background: white; padding: 0; }
+    .container { box-shadow: none; border: none; padding: 0; }
+}
     </style>
 </head>
 <body>
@@ -73,6 +79,7 @@
             <button class="btn-random" onclick="randomizeShifts()">🎲 توزيع ذكي (شفتين / بدون توالي)</button>
             <button id="pdfBtn" class="btn-pdf" onclick="downloadPDF()">📄 تصدير الجدول PDF</button>
             <button id="syncBtn" class="btn-sync" onclick="saveToGoogleSheet()">☁️ حفظ في جوجل شيت</button>
+            <button class="btn-print" onclick="window.print()">🖨️ طباعة الجدول</button>
         </div>
     </div>
 
@@ -97,6 +104,19 @@
     
     // تحديث البيانات القديمة لتشمل مصفوفة الاحتياطي لكي لا يحدث خطأ برمجي
     allDelegates.forEach(d => { if(!d.backupShiftIds) d.backupShiftIds = []; });
+
+    // --- دالة تصفية الرقم لسلطنة عمان ---
+    function filterOmanPhone(phoneStr) {
+        if (!phoneStr) return "";
+        let p = phoneStr.toString().replace(/\D/g, ''); // إزالة الرموز مثل + والمسافات
+        if (p.startsWith("968") && p.length >= 11) {
+            return p.substring(3, 11); // أخذ 8 أرقام بعد 968
+        }
+        if (p.length > 8) {
+            return p.slice(-8); // أخذ آخر 8 أرقام في حال عدم وجود 968 في البداية
+        }
+        return p;
+    }
 
     function render() {
         const container = document.getElementById('shiftsContainer');
@@ -123,7 +143,7 @@
                         return `
                         <div class="delegate-item ${isThisBackup ? 'backup-item' : ''}">
                             <div class="item-main">
-                                <span class="delegate-name">${d.name} ${isThisBackup ? '🛡️ (احتياطي)' : ''}</span>
+                                <span class="delegate-name">${d.name} - ${d.phone || 'لا يوجد رقم'} ${isThisBackup ? '🛡️ (احتياطي)' : ''}</span>
                                 <div style="display:flex; gap:5px;">
                                     <button class="btn-whatsapp" onclick="sendWhatsApp('${d.id}')">💬 واتساب</button>
                                     <button style="background:none; color:red; cursor:pointer;" onclick="deleteDelegate('${d.id}')">×</button>
@@ -166,7 +186,7 @@
                 ${unassignedDelegates.map(d => `
                     <div class="delegate-item" style="border-right-color: var(--warning);">
                         <div class="item-main">
-                            <span class="delegate-name">${d.name}</span>
+                            <span class="delegate-name">${d.name} - ${d.phone || 'لا يوجد رقم'}</span>
                             <div style="display:flex; gap:5px;">
                                 <button class="btn-whatsapp" onclick="sendWhatsApp('${d.id}')">💬 واتساب</button>
                                 <button style="background:none; color:red; cursor:pointer;" onclick="deleteDelegate('${d.id}')">×</button>
@@ -201,8 +221,11 @@
 
     function addSingle() {
         const name = document.getElementById('delegateName').value;
-        const phone = document.getElementById('delegatePhone').value;
+        let phone = document.getElementById('delegatePhone').value;
         if (!name) return;
+        
+        phone = filterOmanPhone(phone); // تطبيق دالة تصفية الرقم
+
         allDelegates.push({ id: Date.now().toString(), name: name, phone: phone, shiftIds: [], backupShiftIds: [] });
         document.getElementById('delegateName').value = '';
         document.getElementById('delegatePhone').value = '';
@@ -214,10 +237,14 @@
         const lines = raw.split('\n').filter(l => l.trim() !== "");
         lines.forEach(line => {
             const parts = line.split(/[،,]/);
+            let phone = parts[1] ? parts[1].trim() : "";
+            
+            phone = filterOmanPhone(phone); // تطبيق دالة تصفية الرقم
+
             allDelegates.push({ 
                 id: Math.random().toString(36).substr(2, 9), 
                 name: parts[0].trim(), 
-                phone: parts[1] ? parts[1].trim() : "", 
+                phone: phone, 
                 shiftIds: [],
                 backupShiftIds: []
             });
@@ -266,6 +293,14 @@
         const delegate = allDelegates.find(d => d.id === delegateId);
         if (delegate) {
             if (type === 'primary') {
+                // التأكد من عدم الجمع بين الفترة 6 والفترة 1 حتى يدوياً
+                if (!delegate.shiftIds.includes(shiftId)) {
+                    if ((shiftId === 1 && delegate.shiftIds.includes(6)) || (shiftId === 6 && delegate.shiftIds.includes(1))) {
+                        alert("تنبيه: لا يمكن الجمع بين الفترة 1 والفترة 6 للمندوب نفسه!");
+                        return;
+                    }
+                }
+
                 delegate.backupShiftIds = delegate.backupShiftIds.filter(id => id !== shiftId); // حذفه من الاحتياطي لنفس الفترة إن وجد
                 if (delegate.shiftIds.includes(shiftId)) {
                     delegate.shiftIds = delegate.shiftIds.filter(id => id !== shiftId);
@@ -273,6 +308,14 @@
                     delegate.shiftIds.push(shiftId);
                 }
             } else {
+                // التأكد من عدم الجمع بين الفترة 6 والفترة 1 في الاحتياطي
+                if (!delegate.backupShiftIds.includes(shiftId)) {
+                    if ((shiftId === 1 && delegate.backupShiftIds.includes(6)) || (shiftId === 6 && delegate.backupShiftIds.includes(1))) {
+                        alert("تنبيه: لا يمكن الجمع بين الفترة 1 والفترة 6 للمندوب نفسه كاحتياطي!");
+                        return;
+                    }
+                }
+
                 delegate.shiftIds = delegate.shiftIds.filter(id => id !== shiftId); // حذفه من الأساسي لنفس الفترة إن وجد
                 if (delegate.backupShiftIds.includes(shiftId)) {
                     delegate.backupShiftIds = delegate.backupShiftIds.filter(id => id !== shiftId);
@@ -320,9 +363,10 @@
 
                     if (delegate.shiftIds.includes(sId)) continue;
 
-                    // منع الشفتات المتتالية
+                    // منع الشفتات المتتالية ومنع الجمع بين 1 و 6
                     if (delegate.shiftIds.length === 1) {
                         if (Math.abs(delegate.shiftIds[0] - sId) <= 1) continue;
+                        if ((delegate.shiftIds[0] === 6 && sId === 1) || (delegate.shiftIds[0] === 1 && sId === 6)) continue;
                     }
 
                     delegate.shiftIds.push(sId);
@@ -374,13 +418,13 @@
                     
                     let delegatesHTML = primary.map(d => `
                         <div style="background: #f9f9f9; padding: 12px; margin: 8px 0; border-right: 4px solid ${headerBg}; border-radius: 4px; border-left: 1px solid #eee; font-weight: bold; color: #333; font-size: 16px;">
-                            ${d.name}
+                            ${d.name} - ${d.phone || 'لا يوجد رقم'}
                         </div>
                     `).join('');
 
                     let backupsHTML = backups.map(d => `
                         <div style="background: #fffaf0; padding: 12px; margin: 8px 0; border-right: 4px solid var(--backup); border-radius: 4px; border-left: 1px solid #eee; font-weight: bold; color: #d35400; font-size: 16px;">
-                            🛡️ ${d.name} (احتياطي)
+                            🛡️ ${d.name} - ${d.phone || 'لا يوجد رقم'} (احتياطي)
                         </div>
                     `).join('');
 
