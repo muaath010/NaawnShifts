@@ -34,7 +34,8 @@
         .btn-print { background: #34495e; color: white; }
         .btn-whatsapp { background: var(--whatsapp); color: white; padding: 4px 8px; font-size: 11px; }
         
-        .action-buttons { grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 15px; }
+        .action-buttons { grid-column: span 2; display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; }
+        .btn-fetch { background: #16a085; color: white; }
 
         .shifts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px; }
         .shift-card { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 12px; }
@@ -76,10 +77,11 @@
         </div>
         
         <div class="action-buttons">
+            <button class="btn-fetch" onclick="fetchBookings()">📥 جلب حجوزات المناديب</button>
             <button class="btn-random" onclick="randomizeShifts()">🎲 توزيع ذكي (شفتين / بدون توالي)</button>
             <button id="pdfBtn" class="btn-pdf" onclick="downloadPDF()">📄 تصدير الجدول PDF</button>
             <button id="syncBtn" class="btn-sync" onclick="saveToGoogleSheet()">☁️ حفظ في جوجل شيت</button>
-            <button class="btn-print" onclick="window.print()">🖨️ طباعة الجدول</button>
+            <!--<button class="btn-print" onclick="window.print()">🖨️ طباعة الجدول</button>-->
         </div>
     </div>
 
@@ -526,6 +528,62 @@
             console.log("تم الإرسال (CORS ignored)", error);
             alert("✅ تم إرسال الأمر! يرجى التحقق من الجدول للتأكد.");
             btn.innerHTML = originalText; btn.disabled = false;
+        });
+    }
+
+    // 5. جلب الحجوزات من جوجل شيت (حجوزات_الغد)
+    function fetchBookings() {
+        const btn = document.querySelector('.btn-fetch');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '⏳ جاري الجلب...';
+        btn.disabled = true;
+
+        fetch(WEB_APP_URL)
+        .then(res => res.json())
+        .then(response => {
+            if (response.status === 'success') {
+                if (response.data.length === 0) {
+                    alert("ℹ️ ورقة حجوزات_الغد فارغة حالياً.");
+                    return;
+                }
+                
+                let newDelegates = {};
+                
+                // دمج بيانات المناديب المسترجعة
+                response.data.forEach(b => {
+                    let key = b.phone + "_" + b.name; // مفتاح فريد لكل مندوب
+                    if (!newDelegates[key]) {
+                        newDelegates[key] = {
+                            id: Math.random().toString(36).substr(2, 9),
+                            name: b.name,
+                            phone: filterOmanPhone(b.phone),
+                            shiftIds: [],
+                            backupShiftIds: []
+                        };
+                    }
+                    
+                    if (b.isBackup) {
+                        newDelegates[key].backupShiftIds.push(b.shiftId);
+                    } else {
+                        newDelegates[key].shiftIds.push(b.shiftId);
+                    }
+                });
+
+                // استبدال الجدول الحالي بالبيانات الجديدة القادمة من الحجوزات
+                allDelegates = Object.values(newDelegates);
+                render();
+                alert("✅ تم جلب وتوزيع حجوزات المناديب بنجاح! يمكنك الآن مراجعتها وطباعة الـ PDF.");
+            } else {
+                alert("⚠️ " + (response.message || "حدث خطأ في الجلب."));
+            }
+        })
+        .catch(err => {
+            console.error("Fetch Error: ", err);
+            alert("❌ حدث خطأ في الاتصال بالخادم. تأكد من عمل (إصدار جديد) في جوجل شيت.");
+        })
+        .finally(() => {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
         });
     }
 
