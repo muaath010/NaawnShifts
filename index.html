@@ -81,6 +81,7 @@
             <button class="btn-random" onclick="randomizeShifts()">🎲 توزيع ذكي (شفتين / بدون توالي)</button>
             <button id="pdfBtn" class="btn-pdf" onclick="downloadPDF()">📄 تصدير الجدول PDF</button>
             <button id="syncBtn" class="btn-sync" onclick="saveToGoogleSheet()">☁️ حفظ في جوجل شيت</button>
+            <button class="btn-add" style="background: var(--danger); width: 100%; grid-column: span 5;" onclick="clearTomorrow()">🗑️ تفريغ حجوزات</button>
             <!--<button class="btn-print" onclick="window.print()">🖨️ طباعة الجدول</button>-->
         </div>
     </div>
@@ -588,6 +589,14 @@
     }
 
     render();
+    function clearTomorrow() {
+        if(!confirm("⚠️ تحذير: هل أنت متأكد من تفريغ ورقة حجوزات الغد؟ (تأكد أنك قمت بالحفظ أولاً)")) return;
+        
+        fetch(WEB_APP_URL + "?action=clearTomorrow", { method: 'POST', body: JSON.stringify({}) })
+        .then(res => res.json())
+        .then(data => alert("✅ تم تفريغ ورقة حجوزات الغد بنجاح، النظام جاهز لاستقبال الحجوزات الجديدة."))
+        .catch(err => alert("✅ تم إرسال أمر التفريغ."));
+    }
 </script>
 </body>
 </html>
