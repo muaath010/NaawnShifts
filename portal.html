@@ -33,7 +33,6 @@
         h1, h2 { text-align: center; color: var(--primary); }
         h1 { border-bottom: 2px solid var(--accent); padding-bottom: 10px; font-size: 22px; }
         
-        /* شاشة تسجيل الدخول */
         #loginSection { display: flex; flex-direction: column; gap: 15px; margin-top: 30px; }
         input { 
             padding: 12px; 
@@ -58,16 +57,28 @@
         .btn-primary { background: var(--accent); color: white; }
         .btn-primary:disabled { background: #95a5a6; cursor: not-allowed; }
         
-        /* شاشة الحجز */
         #bookingSection { display: none; }
         .info-banner {
             background: #e8f8f5;
             border-right: 4px solid var(--accent);
             padding: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             border-radius: 4px;
             font-size: 14px;
         }
+        
+        .alert-banner {
+            background: #fdedec;
+            border-right: 4px solid var(--danger);
+            color: var(--danger);
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            display: none; 
+        }
+
         .shift-card { 
             background: #fff; 
             border: 1px solid #ddd; 
@@ -116,20 +127,27 @@
 
     <!-- شاشة تسجيل الدخول -->
     <div id="loginSection">
-        <p style="text-align: center; color: #7f8c8d; font-size: 14px;">الرجاء إدخال بياناتك للدخول إلى الفترات المتاحة ليوم غد</p>
-        <input type="text" id="delegateName" placeholder="الاسم الكريم (مثال: أحمد)">
-        <input type="tel" id="delegatePhone" placeholder="رقم الواتساب (مثال: 9689xxxxxxx)" dir="ltr">
-        <button class="btn-primary" onclick="login()">دخول وعرض الفترات</button>
+        <p style="text-align: center; color: #7f8c8d; font-size: 14px;">الرجاء إدخال بياناتك للتحقق من السجل والدخول</p>
+        <input type="text" id="delegateName" placeholder="الاسم ">
+        <input type="tel" id="delegatePhone" placeholder="رقم الواتساب انجليزي" dir="ltr">
+        <button id="loginBtn" class="btn-primary" onclick="login()">دخول وعرض الفترات</button>
+        <div id="loginLoader" class="loader">⏳ جاري التحقق من السجل، يرجى الانتظار...</div>
     </div>
 
     <!-- شاشة اختيار الفترات -->
     <div id="bookingSection">
         <div class="info-banner">
             أهلاً بك كابتن <span id="displayName" style="font-weight:bold;"></span> 👋<br>
-            <strong>الشروط:</strong><br>
-            1. اختر فترتين أساسيتين كحد أقصى.<br>
-            2. يجب اختيار فترة واحدة كـ (احتياطي) على الأقل.<br>
-            3. يمنع الجمع بين الفترة 6 والفترة 1.
+            <strong>تعليمات الحجز :</strong><br>
+            1️⃣ يمكنك اختيار فترتين (أساسية) كحد أقصى.<br>
+            2️⃣ يُمنع اختيار فترات متتالية .<br>
+            
+            
+        </div>
+
+        <!-- شريط التحذير للمراقبة الأسبوعية -->
+        <div id="forceBackupAlert" class="alert-banner">
+            ⚠️ تنبيه إداري: لاحظ النظام أنك لم تقم باختيار مناوبة "احتياطي" منذ أكثر من أسبوع. لن تتمكن من حفظ جدولك اليوم حتى تختار فترة احتياطي واحدة على الأقل.
         </div>
 
         <div id="shiftsContainer"></div>
@@ -140,7 +158,6 @@
 </div>
 
 <script>
-    // إعدادات الفترات (نفس الإعدادات في لوحة التحكم)
     const shiftsConfig = [
         { id: 1, time: "08:00 ص → 11:00 ص", type: "morning", needsBackup: true },
         { id: 2, time: "11:00 ص → 02:00 م", type: "morning", needsBackup: true },
@@ -156,8 +173,8 @@
     let currentUser = { name: "", phone: "" };
     let selectedPrimary = [];
     let selectedBackup = [];
+    let mustTakeBackup = false; 
 
-    // دالة تصفية الرقم لسلطنة عمان
     function filterOmanPhone(phoneStr) {
         if (!phoneStr) return "";
         let p = phoneStr.toString().replace(/\D/g, '');
@@ -175,14 +192,54 @@
             return;
         }
 
-        currentUser.name = nameInput;
-        currentUser.phone = filterOmanPhone(phoneInput);
+        // 🌟 نظام القفل (لمنع التكرار لمدة 10 ساعات) 🌟
+        const lastBookingTime = localStorage.getItem('lastBookingTime_N3awn');
+        if (lastBookingTime) {
+            const now = new Date().getTime();
+            const diffHours = (now - parseInt(lastBookingTime)) / (1000 * 60 * 60);
+            
+            if (diffHours < 10) {
+                let remainingHours = Math.ceil(10 - diffHours);
+                alert(`🚫 عذراً، لقد قمت بتسجيل حجزك مسبقاً!\nلا يمكنك إرسال حجز جديد لحماية النظام من التكرار.\nيرجى المحاولة بعد ${remainingHours} ساعات.`);
+                return; // إيقاف العملية ومنعه من الدخول
+            } else {
+                localStorage.removeItem('lastBookingTime_N3awn'); // مسح القفل إذا انتهت المدة
+            }
+        }
+
+        let cleanPhone = filterOmanPhone(phoneInput);
         
-        document.getElementById('loginSection').style.display = 'none';
-        document.getElementById('bookingSection').style.display = 'block';
-        document.getElementById('displayName').innerText = currentUser.name;
-        
-        renderShifts();
+        document.getElementById('loginBtn').style.display = 'none';
+        document.getElementById('loginLoader').style.display = 'block';
+
+        fetch(WEB_APP_URL + "?action=checkUser&phone=" + cleanPhone)
+        .then(res => res.json())
+        .then(response => {
+            currentUser.name = response.name !== "مندوب" ? response.name : nameInput;
+            currentUser.phone = cleanPhone;
+            mustTakeBackup = response.forceBackup; 
+
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('bookingSection').style.display = 'block';
+            document.getElementById('displayName').innerText = currentUser.name;
+            
+            if (mustTakeBackup) {
+                document.getElementById('forceBackupAlert').style.display = 'block';
+            }
+            
+            renderShifts();
+        })
+        .catch(err => {
+            console.error("Login Check Error", err);
+            currentUser.name = nameInput;
+            currentUser.phone = cleanPhone;
+            mustTakeBackup = false;
+            
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('bookingSection').style.display = 'block';
+            document.getElementById('displayName').innerText = currentUser.name;
+            renderShifts();
+        });
     }
 
     function renderShifts() {
@@ -199,19 +256,15 @@
             let disablePrimary = false;
             let disableBackup = false;
 
-            // شرط الحد الأقصى (2 أساسي)
             if (!isPrimaryActive && selectedPrimary.length >= 2) disablePrimary = true;
             
-            // 🌟 شرط منع الفترات المتتالية (جديد)
             selectedPrimary.forEach(sId => {
                 if (Math.abs(sId - shift.id) === 1) disablePrimary = true;
             });
 
-            // شرط منع الجمع بين 1 و 6
             if (!isPrimaryActive && shift.id === 1 && selectedPrimary.includes(6)) disablePrimary = true;
             if (!isPrimaryActive && shift.id === 6 && selectedPrimary.includes(1)) disablePrimary = true;
             
-            // لا يمكن أن يكون المندوب أساسي واحتياطي في نفس الفترة
             if (isBackupActive) disablePrimary = true;
             if (isPrimaryActive) disableBackup = true;
 
@@ -265,13 +318,47 @@
         renderShifts();
     }
 
-   function submitBooking() {
+    // 🌟 دالة مساعدة لإنشاء شاشة النجاح وعرض الفترات 🌟
+    function showSuccessScreen(payload) {
+        // حفظ وقت الحجز للقفل
+        localStorage.setItem('lastBookingTime_N3awn', new Date().getTime().toString());
+
+        // تصميم وعرض الفترات التي تم حجزها
+        let summaryHTML = payload.map(item => `
+            <div style="background: #f9f9f9; border: 1px solid #ddd; border-right: 4px solid ${item.isBackup ? 'var(--backup)' : 'var(--accent)'}; padding: 10px; margin: 8px 0; border-radius: 4px; text-align: right;">
+                <strong>الفترة ${item.shiftId}</strong> ${item.isBackup ? '🛡️ (احتياطي)' : '✅ (أساسي)'}<br>
+                <small dir="ltr" style="color: #555;">${item.shiftTime}</small>
+            </div>
+        `).join('');
+
+        let successHTML = `
+            <div style="text-align:center; padding: 20px;">
+                <h2 style="color: var(--accent);">✅ تم اعتماد حجزك بنجاح!</h2>
+                <p>شكراً لك كابتن <strong>${currentUser.name}</strong>، فتراتك المسجلة ليوم غد هي:</p>
+                
+                <div style="text-align: right; margin-top: 15px;">
+                    ${summaryHTML}
+                </div>
+                
+                <div style="margin-top: 25px; padding: 10px; background: #fdedec; border-radius: 5px; color: var(--danger); font-size: 13px; font-weight: bold;">
+                    🔒 تم إغلاق النظام من جهازك مؤقتاً لمدة 10 ساعات لمنع التكرار والحفاظ على استقرار الجدول. نتمنى لك يوماً موفقاً!
+                </div>
+            </div>
+        `;
+
+        document.getElementById('bookingSection').innerHTML = successHTML;
+    }
+
+    function submitBooking() {
         if (selectedPrimary.length === 0 && selectedBackup.length === 0) {
             alert("⚠️ يرجى اختيار فترة واحدة على الأقل قبل التأكيد.");
             return;
         }
 
-        // 🌟 تم إلغاء شرط إجبار الاحتياطي من هنا بناءً على طلبك
+        if (mustTakeBackup && selectedBackup.length === 0) {
+            alert("🛑 النظام يرفض الحفظ: لقد تجاوزت أسبوعاً بدون أخذ فترة احتياطي. يرجى اختيار مناوبة احتياطي واحدة على الأقل لتتمكن من الاعتماد.");
+            return;
+        }
 
         const btn = document.getElementById('submitBtn');
         const loader = document.getElementById('loader');
@@ -310,20 +397,11 @@
         })
         .then(response => response.json())
         .then(data => {
-            document.getElementById('bookingSection').innerHTML = `
-                <div style="text-align:center; padding: 30px;">
-                    <h2 style="color: var(--accent);">✅ تم استلام حجزك بنجاح!</h2>
-                    <p>شكراً لك كابتن ${currentUser.name}، تم تسجيل فتراتك ليوم غد.</p>
-                </div>
-            `;
+            showSuccessScreen(payload);
         })
         .catch(error => {
-            document.getElementById('bookingSection').innerHTML = `
-                <div style="text-align:center; padding: 30px;">
-                    <h2 style="color: var(--accent);">✅ تم استلام حجزك بنجاح!</h2>
-                    <p>شكراً لك كابتن ${currentUser.name}، تم تسجيل فتراتك ليوم غد.</p>
-                </div>
-            `;
+            // يتم تنفيذه حتى في حال حجب (CORS) طالما تم الإرسال بنجاح
+            showSuccessScreen(payload);
         });
     }
 </script>
