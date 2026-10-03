@@ -193,7 +193,6 @@
             const headerClass = shift.type === 'morning' ? 'header-morning' : 'header-evening';
             const shiftLabel = shift.type === 'morning' ? 'صباحي' : 'مسائي';
             
-            // التحقق من تفعيل/تعطيل الأزرار بناءً على الشروط
             let isPrimaryActive = selectedPrimary.includes(shift.id);
             let isBackupActive = selectedBackup.includes(shift.id);
             
@@ -203,6 +202,11 @@
             // شرط الحد الأقصى (2 أساسي)
             if (!isPrimaryActive && selectedPrimary.length >= 2) disablePrimary = true;
             
+            // 🌟 شرط منع الفترات المتتالية (جديد)
+            selectedPrimary.forEach(sId => {
+                if (Math.abs(sId - shift.id) === 1) disablePrimary = true;
+            });
+
             // شرط منع الجمع بين 1 و 6
             if (!isPrimaryActive && shift.id === 1 && selectedPrimary.includes(6)) disablePrimary = true;
             if (!isPrimaryActive && shift.id === 6 && selectedPrimary.includes(1)) disablePrimary = true;
@@ -217,7 +221,7 @@
             let buttonsHTML = `
                 <button class="btn-shift ${isPrimaryActive ? 'active-primary' : ''} ${disablePrimary ? 'disabled' : ''}" 
                         onclick="togglePrimary(${shift.id})" ${disablePrimary ? 'disabled' : ''}>
-                    ${isPrimaryActive ? '✅ تم الاختيار (أساسي)' : 'اختيار كـ أساسي'}
+                    ${isPrimaryActive ? '✅ تم الاختيار' : 'اختيار كـ أساسي'}
                 </button>
             `;
 
@@ -225,7 +229,7 @@
                 buttonsHTML += `
                     <button class="btn-shift ${isBackupActive ? 'active-backup' : ''} ${disableBackup ? 'disabled' : ''}" 
                             onclick="toggleBackup(${shift.id})" ${disableBackup ? 'disabled' : ''}>
-                        ${isBackupActive ? '🛡️ تم الاختيار (احتياطي)' : 'اختيار كـ احتياطي'}
+                        ${isBackupActive ? '🛡️ احتياطي' : 'اختيار كـ احتياطي'}
                     </button>
                 `;
             }
@@ -261,15 +265,13 @@
         renderShifts();
     }
 
-    function submitBooking() {
+   function submitBooking() {
         if (selectedPrimary.length === 0 && selectedBackup.length === 0) {
             alert("⚠️ يرجى اختيار فترة واحدة على الأقل قبل التأكيد.");
             return;
         }
-        if (selectedBackup.length === 0) {
-            alert("⚠️ تنبيه: يرجى اختيار فترة واحدة كـ (احتياطي) على الأقل لإتمام حجزك.");
-            return;
-        }
+
+        // 🌟 تم إلغاء شرط إجبار الاحتياطي من هنا بناءً على طلبك
 
         const btn = document.getElementById('submitBtn');
         const loader = document.getElementById('loader');
@@ -301,7 +303,6 @@
             });
         });
 
-        // إرسال البيانات لجوجل شيت (نظام الإضافة الفردية)
         fetch(WEB_APP_URL + "?action=addBooking", {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -313,13 +314,10 @@
                 <div style="text-align:center; padding: 30px;">
                     <h2 style="color: var(--accent);">✅ تم استلام حجزك بنجاح!</h2>
                     <p>شكراً لك كابتن ${currentUser.name}، تم تسجيل فتراتك ليوم غد.</p>
-                    <p>ستصلك رسالة تذكير على الواتساب قبل موعد فترتك بنصف ساعة.</p>
                 </div>
             `;
         })
         .catch(error => {
-            console.log("CORS Ignored but sent", error);
-            // جوجل شيت أحياناً يرفض استجابة CORS لكنه يحفظ البيانات بنجاح
             document.getElementById('bookingSection').innerHTML = `
                 <div style="text-align:center; padding: 30px;">
                     <h2 style="color: var(--accent);">✅ تم استلام حجزك بنجاح!</h2>
