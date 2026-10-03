@@ -123,7 +123,7 @@
 <body>
 
 <div class="container">
-    <h1>بوابة حجز مناوبات نعاون 🛵</h1>
+    <h1>بوابة حجز مناوبات نعاون</h1>
 
     <!-- شاشة تسجيل الدخول -->
     <div id="loginSection">
@@ -158,6 +158,9 @@
 </div>
 
 <script>
+    // 🌟 إعداد الحد الأقصى لكل فترة (يمكنك تعديل الرقم 5 من هنا متى شئت) 🌟
+    const MAX_CAPACITY = 5;
+
     const shiftsConfig = [
         { id: 1, time: "08:00 ص → 11:00 ص", type: "morning", needsBackup: true },
         { id: 2, time: "11:00 ص → 02:00 م", type: "morning", needsBackup: true },
@@ -167,13 +170,13 @@
         { id: 6, time: "10:00 م → 01:00 ص", type: "evening", needsBackup: false }
     ];
 
-    // 🌟 ضع هنا رابط جوجل شيت Web App الخاص بك 🌟
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxBFyb77kdiV3MmRBhkiTaEXsVjlww3-pVLxmgRTaDEDiyDy6NUv8tk0Lpr1h-g6AlU5w/exec";
 
     let currentUser = { name: "", phone: "" };
     let selectedPrimary = [];
     let selectedBackup = [];
     let mustTakeBackup = false; 
+    let currentShiftCounts = {}; // تخزين الأعداد الحية للفترات
 
     function filterOmanPhone(phoneStr) {
         if (!phoneStr) return "";
@@ -192,23 +195,20 @@
             return;
         }
 
-        // 🌟 نظام القفل (لمنع التكرار لمدة 10 ساعات) 🌟
         const lastBookingTime = localStorage.getItem('lastBookingTime_N3awn');
         if (lastBookingTime) {
             const now = new Date().getTime();
             const diffHours = (now - parseInt(lastBookingTime)) / (1000 * 60 * 60);
-            
             if (diffHours < 10) {
                 let remainingHours = Math.ceil(10 - diffHours);
-                alert(`🚫 عذراً، لقد قمت بتسجيل حجزك مسبقاً!\nلا يمكنك إرسال حجز جديد لحماية النظام من التكرار.\nيرجى المحاولة بعد ${remainingHours} ساعات.`);
-                return; // إيقاف العملية ومنعه من الدخول
+                alert(`🚫 عذراً، لقد قمت بتسجيل حجزك مسبقاً!\nيرجى المحاولة بعد ${remainingHours} ساعات.`);
+                return;
             } else {
-                localStorage.removeItem('lastBookingTime_N3awn'); // مسح القفل إذا انتهت المدة
+                localStorage.removeItem('lastBookingTime_N3awn');
             }
         }
 
         let cleanPhone = filterOmanPhone(phoneInput);
-        
         document.getElementById('loginBtn').style.display = 'none';
         document.getElementById('loginLoader').style.display = 'block';
 
@@ -218,19 +218,16 @@
             currentUser.name = response.name !== "مندوب" ? response.name : nameInput;
             currentUser.phone = cleanPhone;
             mustTakeBackup = response.forceBackup; 
+            currentShiftCounts = response.shiftCounts || {}; // جلب أعداد المقاعد
 
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('bookingSection').style.display = 'block';
             document.getElementById('displayName').innerText = currentUser.name;
             
-            if (mustTakeBackup) {
-                document.getElementById('forceBackupAlert').style.display = 'block';
-            }
-            
+            if (mustTakeBackup) document.getElementById('forceBackupAlert').style.display = 'block';
             renderShifts();
         })
         .catch(err => {
-            console.error("Login Check Error", err);
             currentUser.name = nameInput;
             currentUser.phone = cleanPhone;
             mustTakeBackup = false;
@@ -252,10 +249,14 @@
             
             let isPrimaryActive = selectedPrimary.includes(shift.id);
             let isBackupActive = selectedBackup.includes(shift.id);
-            
             let disablePrimary = false;
             let disableBackup = false;
-
+            
+            // 🌟 فحص سعة الفترة (إغلاق إذا اكتمل العدد) 🌟
+            let bookedCount = currentShiftCounts[shift.id] || 0;
+            let isFull = (bookedCount >= MAX_CAPACITY);
+            
+            if (!isPrimaryActive && isFull) disablePrimary = true;
             if (!isPrimaryActive && selectedPrimary.length >= 2) disablePrimary = true;
             
             selectedPrimary.forEach(sId => {
@@ -264,17 +265,18 @@
 
             if (!isPrimaryActive && shift.id === 1 && selectedPrimary.includes(6)) disablePrimary = true;
             if (!isPrimaryActive && shift.id === 6 && selectedPrimary.includes(1)) disablePrimary = true;
-            
             if (isBackupActive) disablePrimary = true;
             if (isPrimaryActive) disableBackup = true;
 
             let card = document.createElement('div');
             card.className = 'shift-card';
             
+            let btnText = isPrimaryActive ? '✅ تم الاختيار' : (isFull ? '🚫 مكتمل' : 'اختيار كـ أساسي');
+            
             let buttonsHTML = `
                 <button class="btn-shift ${isPrimaryActive ? 'active-primary' : ''} ${disablePrimary ? 'disabled' : ''}" 
                         onclick="togglePrimary(${shift.id})" ${disablePrimary ? 'disabled' : ''}>
-                    ${isPrimaryActive ? '✅ تم الاختيار' : 'اختيار كـ أساسي'}
+                    ${btnText}
                 </button>
             `;
 
@@ -291,6 +293,9 @@
                 <div class="shift-header ${headerClass}">
                     الفترة ${shift.id} (${shiftLabel})<br>
                     <small dir="ltr">${shift.time}</small>
+                </div>
+                <div style="text-align: center; font-size: 12px; color: #7f8c8d; margin-bottom: 5px;">
+                    المقاعد المحجوزة: ${bookedCount} / ${MAX_CAPACITY}
                 </div>
                 <div class="action-buttons">
                     ${buttonsHTML}
@@ -318,12 +323,8 @@
         renderShifts();
     }
 
-    // 🌟 دالة مساعدة لإنشاء شاشة النجاح وعرض الفترات 🌟
     function showSuccessScreen(payload) {
-        // حفظ وقت الحجز للقفل
         localStorage.setItem('lastBookingTime_N3awn', new Date().getTime().toString());
-
-        // تصميم وعرض الفترات التي تم حجزها
         let summaryHTML = payload.map(item => `
             <div style="background: #f9f9f9; border: 1px solid #ddd; border-right: 4px solid ${item.isBackup ? 'var(--backup)' : 'var(--accent)'}; padding: 10px; margin: 8px 0; border-radius: 4px; text-align: right;">
                 <strong>الفترة ${item.shiftId}</strong> ${item.isBackup ? '🛡️ (احتياطي)' : '✅ (أساسي)'}<br>
@@ -331,22 +332,16 @@
             </div>
         `).join('');
 
-        let successHTML = `
+        document.getElementById('bookingSection').innerHTML = `
             <div style="text-align:center; padding: 20px;">
                 <h2 style="color: var(--accent);">✅ تم اعتماد حجزك بنجاح!</h2>
                 <p>شكراً لك كابتن <strong>${currentUser.name}</strong>، فتراتك المسجلة ليوم غد هي:</p>
-                
-                <div style="text-align: right; margin-top: 15px;">
-                    ${summaryHTML}
-                </div>
-                
+                <div style="text-align: right; margin-top: 15px;">${summaryHTML}</div>
                 <div style="margin-top: 25px; padding: 10px; background: #fdedec; border-radius: 5px; color: var(--danger); font-size: 13px; font-weight: bold;">
                     🔒 تم إغلاق النظام من جهازك مؤقتاً لمدة 10 ساعات لمنع التكرار والحفاظ على استقرار الجدول. نتمنى لك يوماً موفقاً!
                 </div>
             </div>
         `;
-
-        document.getElementById('bookingSection').innerHTML = successHTML;
     }
 
     function submitBooking() {
@@ -370,24 +365,12 @@
         
         selectedPrimary.forEach(sId => {
             const shiftData = shiftsConfig.find(s => s.id === sId);
-            payload.push({
-                name: currentUser.name,
-                phone: currentUser.phone,
-                shiftId: sId,
-                shiftTime: shiftData.time,
-                isBackup: false
-            });
+            payload.push({ name: currentUser.name, phone: currentUser.phone, shiftId: sId, shiftTime: shiftData.time, isBackup: false });
         });
 
         selectedBackup.forEach(sId => {
             const shiftData = shiftsConfig.find(s => s.id === sId);
-            payload.push({
-                name: currentUser.name,
-                phone: currentUser.phone,
-                shiftId: sId,
-                shiftTime: shiftData.time,
-                isBackup: true
-            });
+            payload.push({ name: currentUser.name, phone: currentUser.phone, shiftId: sId, shiftTime: shiftData.time, isBackup: true });
         });
 
         fetch(WEB_APP_URL + "?action=addBooking", {
@@ -396,13 +379,8 @@
             body: JSON.stringify(payload)
         })
         .then(response => response.json())
-        .then(data => {
-            showSuccessScreen(payload);
-        })
-        .catch(error => {
-            // يتم تنفيذه حتى في حال حجب (CORS) طالما تم الإرسال بنجاح
-            showSuccessScreen(payload);
-        });
+        .then(data => showSuccessScreen(payload))
+        .catch(error => showSuccessScreen(payload));
     }
 </script>
 </body>
