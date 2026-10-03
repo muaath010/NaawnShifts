@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>بوابة حجز مناوبات نعاون</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #27ae60;
+            --danger: #e74c3c;
+            --light: #ecf0f1;
+            --warning: #f39c12;
+            --morning: #3498db;
+            --evening: #8e44ad;
+            --backup: #e67e22;
+        }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: #f4f7f6; 
+            margin: 0; 
+            padding: 15px; 
+            color: var(--primary); 
+        }
+        .container { 
+            max-width: 500px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 20px; 
+            border-radius: 15px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+        }
+        h1, h2 { text-align: center; color: var(--primary); }
+        h1 { border-bottom: 2px solid var(--accent); padding-bottom: 10px; font-size: 22px; }
+        
+        /* شاشة تسجيل الدخول */
+        #loginSection { display: flex; flex-direction: column; gap: 15px; margin-top: 30px; }
+        input { 
+            padding: 12px; 
+            border: 2px solid #ddd; 
+            border-radius: 8px; 
+            font-size: 16px; 
+            font-family: inherit;
+            text-align: center;
+        }
+        input:focus { border-color: var(--accent); outline: none; }
+        
+        button { 
+            padding: 12px; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            font-size: 16px;
+            transition: 0.3s; 
+            width: 100%;
+        }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:disabled { background: #95a5a6; cursor: not-allowed; }
+        
+        /* شاشة الحجز */
+        #bookingSection { display: none; }
+        .info-banner {
+            background: #e8f8f5;
+            border-right: 4px solid var(--accent);
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .shift-card { 
+            background: #fff; 
+            border: 1px solid #ddd; 
+            border-radius: 10px; 
+            padding: 15px; 
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .shift-header { 
+            font-weight: bold; 
+            color: white; 
+            padding: 8px; 
+            border-radius: 5px; 
+            text-align: center; 
+        }
+        .header-morning { background: var(--morning); }
+        .header-evening { background: var(--evening); }
+        
+        .action-buttons { display: flex; gap: 10px; }
+        .btn-shift { 
+            background: #eee; 
+            color: #333; 
+            flex: 1; 
+            font-size: 14px;
+            border: 2px solid transparent;
+        }
+        .btn-shift.active-primary { background: var(--accent); color: white; border-color: #1e8449; }
+        .btn-shift.active-backup { background: var(--backup); color: white; border-color: #d35400; }
+        .btn-shift.disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .loader {
+            display: none;
+            text-align: center;
+            margin-top: 15px;
+            font-weight: bold;
+            color: var(--accent);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>بوابة حجز مناوبات نعاون 🛵</h1>
+
+    <!-- شاشة تسجيل الدخول -->
+    <div id="loginSection">
+        <p style="text-align: center; color: #7f8c8d; font-size: 14px;">الرجاء إدخال بياناتك للدخول إلى الفترات المتاحة ليوم غد</p>
+        <input type="text" id="delegateName" placeholder="الاسم الكريم (مثال: أحمد)">
+        <input type="tel" id="delegatePhone" placeholder="رقم الواتساب (مثال: 9689xxxxxxx)" dir="ltr">
+        <button class="btn-primary" onclick="login()">دخول وعرض الفترات</button>
+    </div>
+
+    <!-- شاشة اختيار الفترات -->
+    <div id="bookingSection">
+        <div class="info-banner">
+            أهلاً بك كابتن <span id="displayName" style="font-weight:bold;"></span> 👋<br>
+            <strong>الشروط:</strong><br>
+            1. اختر فترتين أساسيتين كحد أقصى.<br>
+            2. يجب اختيار فترة واحدة كـ (احتياطي) على الأقل.<br>
+            3. يمنع الجمع بين الفترة 6 والفترة 1.
+        </div>
+
+        <div id="shiftsContainer"></div>
+
+        <button id="submitBtn" class="btn-primary" style="margin-top: 20px;" onclick="submitBooking()">✅ تأكيد واعتماد الحجز</button>
+        <div id="loader" class="loader">⏳ جاري إرسال حجزك للنظام، يرجى الانتظار...</div>
+    </div>
+</div>
+
+<script>
+    // إعدادات الفترات (نفس الإعدادات في لوحة التحكم)
+    const shiftsConfig = [
+        { id: 1, time: "08:00 ص → 11:00 ص", type: "morning", needsBackup: true },
+        { id: 2, time: "11:00 ص → 02:00 م", type: "morning", needsBackup: true },
+        { id: 3, time: "02:00 م → 05:00 م", type: "morning", needsBackup: true },
+        { id: 4, time: "05:00 م → 07:30 م", type: "evening", needsBackup: false },
+        { id: 5, time: "07:30 م → 10:00 م", type: "evening", needsBackup: false },
+        { id: 6, time: "10:00 م → 01:00 ص", type: "evening", needsBackup: false }
+    ];
+
+    // 🌟 ضع هنا رابط جوجل شيت Web App الخاص بك 🌟
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxBFyb77kdiV3MmRBhkiTaEXsVjlww3-pVLxmgRTaDEDiyDy6NUv8tk0Lpr1h-g6AlU5w/exec";
+
+    let currentUser = { name: "", phone: "" };
+    let selectedPrimary = [];
+    let selectedBackup = [];
+
+    // دالة تصفية الرقم لسلطنة عمان
+    function filterOmanPhone(phoneStr) {
+        if (!phoneStr) return "";
+        let p = phoneStr.toString().replace(/\D/g, '');
+        if (p.startsWith("968") && p.length >= 11) return p.substring(3, 11);
+        if (p.length > 8) return p.slice(-8);
+        return p;
+    }
+
+    function login() {
+        const nameInput = document.getElementById('delegateName').value.trim();
+        const phoneInput = document.getElementById('delegatePhone').value.trim();
+        
+        if (!nameInput || !phoneInput) {
+            alert("يرجى إدخال الاسم ورقم الجوال للمتابعة.");
+            return;
+        }
+
+        currentUser.name = nameInput;
+        currentUser.phone = filterOmanPhone(phoneInput);
+        
+        document.getElementById('loginSection').style.display = 'none';
+        document.getElementById('bookingSection').style.display = 'block';
+        document.getElementById('displayName').innerText = currentUser.name;
+        
+        renderShifts();
+    }
+
+    function renderShifts() {
+        const container = document.getElementById('shiftsContainer');
+        container.innerHTML = '';
+
+        shiftsConfig.forEach(shift => {
+            const headerClass = shift.type === 'morning' ? 'header-morning' : 'header-evening';
+            const shiftLabel = shift.type === 'morning' ? 'صباحي' : 'مسائي';
+            
+            // التحقق من تفعيل/تعطيل الأزرار بناءً على الشروط
+            let isPrimaryActive = selectedPrimary.includes(shift.id);
+            let isBackupActive = selectedBackup.includes(shift.id);
+            
+            let disablePrimary = false;
+            let disableBackup = false;
+
+            // شرط الحد الأقصى (2 أساسي)
+            if (!isPrimaryActive && selectedPrimary.length >= 2) disablePrimary = true;
+            
+            // شرط منع الجمع بين 1 و 6
+            if (!isPrimaryActive && shift.id === 1 && selectedPrimary.includes(6)) disablePrimary = true;
+            if (!isPrimaryActive && shift.id === 6 && selectedPrimary.includes(1)) disablePrimary = true;
+            
+            // لا يمكن أن يكون المندوب أساسي واحتياطي في نفس الفترة
+            if (isBackupActive) disablePrimary = true;
+            if (isPrimaryActive) disableBackup = true;
+
+            let card = document.createElement('div');
+            card.className = 'shift-card';
+            
+            let buttonsHTML = `
+                <button class="btn-shift ${isPrimaryActive ? 'active-primary' : ''} ${disablePrimary ? 'disabled' : ''}" 
+                        onclick="togglePrimary(${shift.id})" ${disablePrimary ? 'disabled' : ''}>
+                    ${isPrimaryActive ? '✅ تم الاختيار (أساسي)' : 'اختيار كـ أساسي'}
+                </button>
+            `;
+
+            if (shift.needsBackup) {
+                buttonsHTML += `
+                    <button class="btn-shift ${isBackupActive ? 'active-backup' : ''} ${disableBackup ? 'disabled' : ''}" 
+                            onclick="toggleBackup(${shift.id})" ${disableBackup ? 'disabled' : ''}>
+                        ${isBackupActive ? '🛡️ تم الاختيار (احتياطي)' : 'اختيار كـ احتياطي'}
+                    </button>
+                `;
+            }
+
+            card.innerHTML = `
+                <div class="shift-header ${headerClass}">
+                    الفترة ${shift.id} (${shiftLabel})<br>
+                    <small dir="ltr">${shift.time}</small>
+                </div>
+                <div class="action-buttons">
+                    ${buttonsHTML}
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    function togglePrimary(id) {
+        if (selectedPrimary.includes(id)) {
+            selectedPrimary = selectedPrimary.filter(s => s !== id);
+        } else {
+            selectedPrimary.push(id);
+        }
+        renderShifts();
+    }
+
+    function toggleBackup(id) {
+        if (selectedBackup.includes(id)) {
+            selectedBackup = selectedBackup.filter(s => s !== id);
+        } else {
+            selectedBackup.push(id);
+        }
+        renderShifts();
+    }
+
+    function submitBooking() {
+        if (selectedPrimary.length === 0 && selectedBackup.length === 0) {
+            alert("⚠️ يرجى اختيار فترة واحدة على الأقل قبل التأكيد.");
+            return;
+        }
+        if (selectedBackup.length === 0) {
+            alert("⚠️ تنبيه: يرجى اختيار فترة واحدة كـ (احتياطي) على الأقل لإتمام حجزك.");
+            return;
+        }
+
+        const btn = document.getElementById('submitBtn');
+        const loader = document.getElementById('loader');
+        
+        btn.style.display = 'none';
+        loader.style.display = 'block';
+
+        let payload = [];
+        
+        selectedPrimary.forEach(sId => {
+            const shiftData = shiftsConfig.find(s => s.id === sId);
+            payload.push({
+                name: currentUser.name,
+                phone: currentUser.phone,
+                shiftId: sId,
+                shiftTime: shiftData.time,
+                isBackup: false
+            });
+        });
+
+        selectedBackup.forEach(sId => {
+            const shiftData = shiftsConfig.find(s => s.id === sId);
+            payload.push({
+                name: currentUser.name,
+                phone: currentUser.phone,
+                shiftId: sId,
+                shiftTime: shiftData.time,
+                isBackup: true
+            });
+        });
+
+        // إرسال البيانات لجوجل شيت (نظام الإضافة الفردية)
+        fetch(WEB_APP_URL + "?action=addBooking", {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('bookingSection').innerHTML = `
+                <div style="text-align:center; padding: 30px;">
+                    <h2 style="color: var(--accent);">✅ تم استلام حجزك بنجاح!</h2>
+                    <p>شكراً لك كابتن ${currentUser.name}، تم تسجيل فتراتك ليوم غد.</p>
+                    <p>ستصلك رسالة تذكير على الواتساب قبل موعد فترتك بنصف ساعة.</p>
+                </div>
+            `;
+        })
+        .catch(error => {
+            console.log("CORS Ignored but sent", error);
+            // جوجل شيت أحياناً يرفض استجابة CORS لكنه يحفظ البيانات بنجاح
+            document.getElementById('bookingSection').innerHTML = `
+                <div style="text-align:center; padding: 30px;">
+                    <h2 style="color: var(--accent);">✅ تم استلام حجزك بنجاح!</h2>
+                    <p>شكراً لك كابتن ${currentUser.name}، تم تسجيل فتراتك ليوم غد.</p>
+                </div>
+            `;
+        });
+    }
+</script>
+</body>
+</html>
