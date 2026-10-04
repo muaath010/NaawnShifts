@@ -33,7 +33,19 @@
         h1, h2 { text-align: center; color: var(--primary); }
         h1 { border-bottom: 2px solid var(--accent); padding-bottom: 10px; font-size: 22px; }
         
-        #loginSection { display: flex; flex-direction: column; gap: 15px; margin-top: 30px; }
+        #loginSection, #closedSection { display: flex; flex-direction: column; gap: 15px; margin-top: 30px; }
+        
+        /* تصميم شاشة الإغلاق */
+        #closedSection {
+            text-align: center; 
+            padding: 30px 15px; 
+            background: #fdedec; 
+            border-radius: 10px; 
+            border: 2px dashed var(--danger);
+            color: var(--danger);
+            display: none; /* مخفي افتراضياً */
+        }
+
         input { 
             padding: 12px; 
             border: 2px solid #ddd; 
@@ -125,11 +137,20 @@
 <div class="container">
     <h1>بوابة حجز مناوبات نعاون</h1>
 
+    <!-- 🌟 شاشة الإغلاق (تظهر خارج أوقات العمل) 🌟 -->
+    <div id="closedSection">
+        <h2 style="margin-top: 0;">🚫 البوابة مغلقة حالياً</h2>
+        <p style="font-size: 16px; color: #333; line-height: 1.6;">
+            أوقات الحجز اليومية تبدأ من الساعة <strong style="color: var(--danger);">2:00 ظهراً</strong> وتنتهي الساعة <strong style="color: var(--danger);">5:00 عصراً</strong> بتوقيت سلطنة عمان.
+        </p>
+        <p style="color: #777; font-size: 14px;">يرجى العودة خلال أوقات العمل المحددة، نراكم غداً!</p>
+    </div>
+
     <!-- شاشة تسجيل الدخول -->
     <div id="loginSection">
         <p style="text-align: center; color: #7f8c8d; font-size: 14px;">الرجاء إدخال بياناتك للتحقق من السجل والدخول</p>
-        <input type="text" id="delegateName" placeholder="الاسم ">
-        <input type="tel" id="delegatePhone" placeholder="رقم الواتساب انجليزي" dir="ltr">
+        <input type="text" id="delegateName" placeholder="الاسم الكريم">
+        <input type="tel" id="delegatePhone" placeholder="رقم الواتساب" dir="ltr">
         <button id="loginBtn" class="btn-primary" onclick="login()">دخول وعرض الفترات</button>
         <div id="loginLoader" class="loader">⏳ جاري التحقق من السجل، يرجى الانتظار...</div>
     </div>
@@ -141,8 +162,6 @@
             <strong>تعليمات الحجز :</strong><br>
             1️⃣ يمكنك اختيار فترتين (أساسية) كحد أقصى.<br>
             2️⃣ يُمنع اختيار فترات متتالية .<br>
-            
-            
         </div>
 
         <!-- شريط التحذير للمراقبة الأسبوعية -->
@@ -158,7 +177,6 @@
 </div>
 
 <script>
-    // 🌟 إعداد الحد الأقصى لكل فترة (يمكنك تعديل الرقم 5 من هنا متى شئت) 🌟
     let shiftCapacities = { morning: 5, evening: 5 };
 
     const shiftsConfig = [
@@ -176,7 +194,21 @@
     let selectedPrimary = [];
     let selectedBackup = [];
     let mustTakeBackup = false; 
-    let currentShiftCounts = {}; // تخزين الأعداد الحية للفترات
+    let currentShiftCounts = {}; 
+
+    // 🌟 فحص أوقات العمل عند تحميل الصفحة 🌟
+    window.onload = function() {
+        try {
+            let omanTime = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Muscat"}));
+            let hour = omanTime.getHours();
+            if (hour < 14 || hour >= 17) {
+                document.getElementById('loginSection').style.display = 'none';
+                document.getElementById('closedSection').style.display = 'flex';
+            }
+        } catch(e) {
+            console.log("Timezone check fallback to server");
+        }
+    };
 
     function filterOmanPhone(phoneStr) {
         if (!phoneStr) return "";
@@ -202,12 +234,18 @@
         fetch(WEB_APP_URL + "?action=checkUser&phone=" + cleanPhone)
         .then(res => res.json())
         .then(response => {
-            // 🌟 فحص إذا كان مسجلاً في قاعدة البيانات 🌟
+            // 🌟 فحص الرد من السيرفر إذا كانت البوابة مغلقة 🌟
+            if (response.status === "closed") {
+                document.getElementById('loginSection').style.display = 'none';
+                document.getElementById('closedSection').style.display = 'flex';
+                return;
+            }
+
             if (response.hasBooked) {
                 document.getElementById('loginBtn').style.display = 'block';
                 document.getElementById('loginLoader').style.display = 'none';
                 alert("🚫 عذراً، لقد قمت بتسجيل فتراتك ليوم غد مسبقاً ولن تتمكن من تعديلها أو إرسال حجز جديد. لأي تعديل يرجى التواصل مع الإدارة.");
-                return; // إيقاف الدخول
+                return; 
             }
 
             if (response.name && response.name !== "مندوب" && response.name !== "undefined") {
@@ -239,6 +277,7 @@
             renderShifts();
         });
     }
+
     function renderShifts() {
         const container = document.getElementById('shiftsContainer');
         container.innerHTML = '';
@@ -252,7 +291,7 @@
             let disablePrimary = false;
             let disableBackup = false;
             
-            // 🌟 تطبيق السعة الديناميكية بناءً على نوع الفترة 🌟
+            // 🌟 الكود النظيف للسعة الديناميكية بدون تكرار 🌟
             let capacityLimit = shift.type === 'morning' ? shiftCapacities.morning : shiftCapacities.evening;
             let bookedCount = currentShiftCounts[shift.id] || 0;
             let isFull = (bookedCount >= capacityLimit);
@@ -379,7 +418,15 @@
             body: JSON.stringify(payload)
         })
         .then(response => response.json())
-        .then(data => showSuccessScreen(payload))
+        .then(data => {
+            if (data.status === "closed") {
+                alert("🚫 " + data.message);
+                document.getElementById('bookingSection').style.display = 'none';
+                document.getElementById('closedSection').style.display = 'flex';
+            } else {
+                showSuccessScreen(payload);
+            }
+        })
         .catch(error => showSuccessScreen(payload));
     }
 </script>
