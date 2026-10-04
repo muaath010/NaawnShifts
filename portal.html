@@ -252,15 +252,10 @@
             let disablePrimary = false;
             let disableBackup = false;
             
-            // 🌟 فحص سعة الفترة (إغلاق إذا اكتمل العدد) 🌟
-            let bookedCount = currentShiftCounts[shift.id] || 0;
             // 🌟 تطبيق السعة الديناميكية بناءً على نوع الفترة 🌟
             let capacityLimit = shift.type === 'morning' ? shiftCapacities.morning : shiftCapacities.evening;
             let bookedCount = currentShiftCounts[shift.id] || 0;
             let isFull = (bookedCount >= capacityLimit);
-            
-            if (!isPrimaryActive && isFull) disablePrimary = true;
-            if (!isPrimaryActive && selectedPrimary.length >= 2) disablePrimary = true;
             
             if (!isPrimaryActive && isFull) disablePrimary = true;
             if (!isPrimaryActive && selectedPrimary.length >= 2) disablePrimary = true;
