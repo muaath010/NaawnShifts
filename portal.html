@@ -159,7 +159,7 @@
 
 <script>
     // 🌟 إعداد الحد الأقصى لكل فترة (يمكنك تعديل الرقم 5 من هنا متى شئت) 🌟
-    const MAX_CAPACITY = 5;
+    let shiftCapacities = { morning: 5, evening: 5 };
 
     const shiftsConfig = [
         { id: 1, time: "08:00 ص → 11:00 ص", type: "morning", needsBackup: true },
@@ -219,6 +219,7 @@
             currentUser.phone = cleanPhone;
             mustTakeBackup = response.forceBackup; 
             currentShiftCounts = response.shiftCounts || {}; 
+            shiftCapacities = response.capacities || { morning: 5, evening: 5 };
 
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('bookingSection').style.display = 'block';
@@ -253,7 +254,13 @@
             
             // 🌟 فحص سعة الفترة (إغلاق إذا اكتمل العدد) 🌟
             let bookedCount = currentShiftCounts[shift.id] || 0;
-            let isFull = (bookedCount >= MAX_CAPACITY);
+            // 🌟 تطبيق السعة الديناميكية بناءً على نوع الفترة 🌟
+            let capacityLimit = shift.type === 'morning' ? shiftCapacities.morning : shiftCapacities.evening;
+            let bookedCount = currentShiftCounts[shift.id] || 0;
+            let isFull = (bookedCount >= capacityLimit);
+            
+            if (!isPrimaryActive && isFull) disablePrimary = true;
+            if (!isPrimaryActive && selectedPrimary.length >= 2) disablePrimary = true;
             
             if (!isPrimaryActive && isFull) disablePrimary = true;
             if (!isPrimaryActive && selectedPrimary.length >= 2) disablePrimary = true;
@@ -294,7 +301,7 @@
                     <small dir="ltr">${shift.time}</small>
                 </div>
                 <div style="text-align: center; font-size: 12px; color: #7f8c8d; margin-bottom: 5px;">
-                    المقاعد المحجوزة: ${bookedCount} / ${MAX_CAPACITY}
+                   المقاعد المحجوزة: ${bookedCount} / ${capacityLimit}
                 </div>
                 <div class="action-buttons">
                     ${buttonsHTML}
