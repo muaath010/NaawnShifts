@@ -64,6 +64,16 @@
 
 <div class="container">
     <h1> نظام مناوبات مناديب نعاون </h1>
+    <div class="controls" style="margin-bottom: 15px; background: #e8eaed;">
+        <div style="display: flex; gap: 15px; align-items: center; justify-content: center;">
+            <strong>⚙️ سعة الفترات ليوم غد:</strong>
+            <label>الصباحي:</label>
+            <input type="number" id="capMorning" value="5" style="width: 60px; text-align: center; padding: 5px;">
+            <label>المسائي:</label>
+            <input type="number" id="capEvening" value="5" style="width: 60px; text-align: center; padding: 5px;">
+            <button class="btn-sync" style="padding: 6px 15px;" onclick="updateCapacity()">حفظ السعة</button>
+        </div>
+    </div>
 
     <div class="controls">
         <div class="input-group">
@@ -597,6 +607,17 @@
         .then(data => alert("✅ تم تفريغ ورقة حجوزات الغد بنجاح، النظام جاهز لاستقبال الحجوزات الجديدة."))
         .catch(err => alert("✅ تم إرسال أمر التفريغ."));
     }
+
+    function updateCapacity() {
+        const morning = document.getElementById('capMorning').value;
+        const evening = document.getElementById('capEvening').value;
+        fetch(WEB_APP_URL + "?action=updateCapacity", {
+            method: 'POST',
+            body: JSON.stringify({ morning: morning, evening: evening })
+        }).then(res => res.json())
+        .then(data => alert("✅ تم تحديث سعة الفترات بنجاح. سيتم تطبيقها فوراً على حجز المناديب."));
+    }
+    
 </script>
 </body>
 </html>
