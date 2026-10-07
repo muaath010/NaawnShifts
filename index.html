@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة إدارة مناوبات نعاون</title>
+    <title>نظام توزيع مناديب نعاون </title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         :root {
@@ -16,127 +16,91 @@
             --blue: #2980b9;
             --morning: #3498db;
             --evening: #8e44ad;
-            --backup: #e67e22; 
+            --backup: #e67e22; /* لون خاص للاحتياطي */
         }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; margin: 0; padding: 15px; color: var(--primary); }
-        .container { max-width: 1200px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
-        h1 { text-align: center; color: var(--primary); border-bottom: 2px solid var(--accent); padding-bottom: 10px; font-size: 24px; margin-top: 0;}
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; margin: 0; padding: 20px; color: var(--primary); }
+        .container { max-width: 1200px; margin: auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: var(--primary); border-bottom: 2px solid var(--accent); padding-bottom: 10px; }
         
-        /* 🌟 تصميم أقسام لوحة التحكم الجديدة 🌟 */
-        .admin-section { background: var(--light); padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #dcdde1; }
-        .admin-section h3 { margin: 0 0 15px 0; font-size: 16px; color: #34495e; border-bottom: 1px solid #bdc3c7; padding-bottom: 8px; }
-        
-        /* 🌟 تقسيم الشبكات للأزرار والمدخلات 🌟 */
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px; background: var(--light); padding: 15px; border-radius: 10px; }
         .input-group { display: flex; flex-direction: column; gap: 8px; }
         
-        .capacity-group { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; }
-        .capacity-group input { width: 70px; text-align: center; font-weight: bold; font-size: 16px; }
-        
-        .action-buttons { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
-        
-        /* 🌟 تصميم الأزرار 🌟 */
-        button { padding: 12px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
-        button:hover { opacity: 0.9; transform: translateY(-1px); }
-        button:disabled { cursor: not-allowed; opacity: 0.6; }
-        
+        button { padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
+        button:disabled { cursor: not-allowed; opacity: 0.7; }
         .btn-add { background: var(--accent); color: white; }
         .btn-random { background: #8e44ad; color: white; }
         .btn-pdf { background: #e67e22; color: white; }
         .btn-sync { background: var(--blue); color: white; }
-        .btn-fetch { background: #16a085; color: white; }
-        .btn-danger { background: var(--danger); color: white; }
+        .btn-print { background: #34495e; color: white; }
         .btn-whatsapp { background: var(--whatsapp); color: white; padding: 4px 8px; font-size: 11px; }
         
-        textarea, input[type="text"], input[type="tel"], input[type="number"] { padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit; }
-        textarea:focus, input:focus { border-color: var(--accent); outline: none; }
+        .action-buttons { grid-column: span 2; display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; }
+        .btn-fetch { background: #16a085; color: white; }
 
-        /* 🌟 تصميم البطاقات (الفترات) 🌟 */
-        .shifts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
-        .shift-card { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .shifts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px; }
+        .shift-card { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 12px; }
         .shift-header { font-weight: bold; color: white; padding: 8px; border-radius: 5px; margin-bottom: 10px; text-align: center; }
         .header-morning { background: var(--morning); }
         .header-evening { background: var(--evening); }
         
         .delegate-item { background: #f9f9f9; padding: 10px; margin: 8px 0; border-right: 4px solid var(--accent); border-radius: 4px; border-left: 1px solid #eee; }
-        .delegate-item.backup-item { border-right: 4px solid var(--backup); background: #fffaf0; }
+        .delegate-item.backup-item { border-right: 4px solid var(--backup); background: #fffaf0; } /* تمييز الاحتياطي */
         .item-main { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .delegate-name { font-weight: bold; font-size: 14px; }
+        .delegate-name { font-weight: bold; }
         
         .checkbox-group { display: flex; flex-wrap: wrap; gap: 4px; }
-        .checkbox-group label { background: #eee; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; }
-        .lbl-backup { border: 1px dashed var(--backup); }
-
-        /* 🌟 التوافق مع شاشات الهواتف (Responsive) 🌟 */
-        @media (max-width: 768px) {
-            .grid-2 { grid-template-columns: 1fr; }
-            .capacity-group { flex-direction: column; align-items: stretch; }
-            .capacity-group button { width: 100%; }
-            .action-buttons { grid-template-columns: 1fr 1fr; } /* زرين بجانب بعض في الهاتف */
-        }
-        @media (max-width: 480px) {
-            .action-buttons { grid-template-columns: 1fr; } /* زر واحد في الشاشات الصغيرة جداً */
-        }
-
-        /* 🌟 إخفاء لوحة التحكم عند الطباعة 🌟 */
+        .checkbox-group label { background: #eee; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; }
+        .lbl-backup { border: 1px dashed var(--backup); } /* شكل زر الاحتياطي */
+        
+        textarea, input[type="text"] { padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-family: inherit; }
         @media print {
-            .no-print { display: none !important; }
-            body { background: white; padding: 0; }
-            .container { box-shadow: none; border: none; padding: 0; max-width: 100%; }
-        }
+    .controls { display: none !important; }
+    body { background: white; padding: 0; }
+    .container { box-shadow: none; border: none; padding: 0; }
+}
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1 class="no-print">لوحة إدارة مناوبات نعاون ⚙️</h1>
+    <h1> نظام مناوبات مناديب نعاون </h1>
+    <div class="controls" style="margin-bottom: 15px; background: #e8eaed;">
+        <div style="display: flex; gap: 15px; align-items: center; justify-content: center;">
+            <strong>⚙️ سعة الفترات ليوم غد:</strong>
+            <label>الصباحي:</label>
+            <input type="number" id="capMorning" value="5" style="width: 60px; text-align: center; padding: 5px;">
+            <label>المسائي:</label>
+            <input type="number" id="capEvening" value="5" style="width: 60px; text-align: center; padding: 5px;">
+            <button class="btn-sync" style="padding: 6px 15px;" onclick="updateCapacity()">حفظ السعة</button>
+        </div>
+    </div>
 
-    <!-- 🌟 القسم الأول: العمليات الأساسية لجلب وإدارة الجدول 🌟 -->
-    <div class="admin-section no-print">
-        <h3>🛠️ العمليات الأساسية</h3>
+    <div class="controls">
+        <div class="input-group">
+            <input type="text" id="delegateName" placeholder="اسم المندوب">
+            <input type="text" id="delegatePhone" placeholder="رقم الواتساب (مثال: 9665xxxxx)">
+            <button class="btn-add" onclick="addSingle()">➕ إضافة مندوب</button>
+        </div>
+        <div class="input-group">
+            <textarea id="bulkInput" placeholder="لصق (اسم المندوب، الرقم) كل واحد في سطر..."></textarea>
+            <button class="btn-add" onclick="addBulk()">📋 إضافة القائمة</button>
+        </div>
+        
         <div class="action-buttons">
             <button class="btn-fetch" onclick="fetchBookings()">📥 جلب حجوزات المناديب</button>
-            <button id="syncBtn" class="btn-sync" onclick="saveToGoogleSheet()">☁️ اعتماد وحفظ في الشيت</button>
-            <button id="pdfBtn" class="btn-pdf" onclick="downloadPDF()">📄 تصدير الجدول كـ PDF</button>
-            <button class="btn-danger" onclick="clearTomorrow()">🗑️ تفريغ حجوزات الغد</button>
-            <button class="btn-random" onclick="randomizeShifts()">🎲 توزيع ذكي (تلقائي)</button>
+            <button class="btn-random" onclick="randomizeShifts()">🎲 توزيع ذكي (شفتين / بدون توالي)</button>
+            <button id="pdfBtn" class="btn-pdf" onclick="downloadPDF()">📄 تصدير الجدول PDF</button>
+            <button id="syncBtn" class="btn-sync" onclick="saveToGoogleSheet()">☁️ حفظ في جوجل شيت</button>
+            <button class="btn-add" style="background: var(--danger); width: 100%; grid-column: span 5;" onclick="clearTomorrow()">🗑️ تفريغ حجوزات</button>
+            <!--<button class="btn-print" onclick="window.print()">🖨️ طباعة الجدول</button>-->
         </div>
     </div>
 
-    <!-- 🌟 القسم الثاني: التحكم بسعة الفترات 🌟 -->
-    <div class="admin-section no-print">
-        <h3>📊 سعة الفترات (تطبق فوراً في صفحة المناديب)</h3>
-        <div class="capacity-group">
-            <label>الصباحي:</label>
-            <input type="number" id="capMorning" value="5">
-            <label>المسائي:</label>
-            <input type="number" id="capEvening" value="5">
-            <button class="btn-sync" onclick="updateCapacity()">💾 تحديث السعة</button>
-        </div>
-    </div>
-
-    <!-- 🌟 القسم الثالث: الإضافة اليدوية للمناديب (عند الحاجة) 🌟 -->
-    <div class="admin-section no-print">
-        <h3>👤 إضافة مناديب يدوياً (للتعديلات الطارئة)</h3>
-        <div class="grid-2">
-            <div class="input-group">
-                <input type="text" id="delegateName" placeholder="الاسم الكريم">
-                <input type="tel" id="delegatePhone" placeholder="رقم الواتساب (انجليزي)" dir="ltr">
-                <button class="btn-add" onclick="addSingle()">➕ إضافة فردية</button>
-            </div>
-            <div class="input-group">
-                <textarea id="bulkInput" rows="3" placeholder="لصق (اسم المندوب، الرقم) كل واحد في سطر..."></textarea>
-                <button class="btn-add" onclick="addBulk()">📋 إضافة مجموعة دفعة واحدة</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 🌟 شبكة عرض الفترات والمناديب 🌟 -->
     <div class="shifts-grid" id="shiftsContainer"></div>
 </div>
 
 <script>
-    // 1. إعدادات الفترات الجديدة
+    // 1. إعدادات الفترات الجديدة (8 صباحاً إلى 1 ليلاً) وأوقات التنبيه المرتبطة بها + تحديد الفترات التي تحتاج احتياطي
     const shiftsConfig = [
         { id: 1, time: "08:00 ص → 11:00 ص", type: "morning", notify: "07:30", needsBackup: true },
         { id: 2, time: "11:00 ص → 02:00 م", type: "morning", notify: "10:30", needsBackup: true },
@@ -151,18 +115,18 @@
 
     let allDelegates = JSON.parse(localStorage.getItem('delegates_v5')) || [];
     
-    // تحديث البيانات القديمة لتشمل مصفوفة الاحتياطي
+    // تحديث البيانات القديمة لتشمل مصفوفة الاحتياطي لكي لا يحدث خطأ برمجي
     allDelegates.forEach(d => { if(!d.backupShiftIds) d.backupShiftIds = []; });
 
     // --- دالة تصفية الرقم لسلطنة عمان ---
     function filterOmanPhone(phoneStr) {
         if (!phoneStr) return "";
-        let p = phoneStr.toString().replace(/\D/g, ''); 
+        let p = phoneStr.toString().replace(/\D/g, ''); // إزالة الرموز مثل + والمسافات
         if (p.startsWith("968") && p.length >= 11) {
-            return p.substring(3, 11); 
+            return p.substring(3, 11); // أخذ 8 أرقام بعد 968
         }
         if (p.length > 8) {
-            return p.slice(-8); 
+            return p.slice(-8); // أخذ آخر 8 أرقام في حال عدم وجود 968 في البداية
         }
         return p;
     }
@@ -192,10 +156,10 @@
                         return `
                         <div class="delegate-item ${isThisBackup ? 'backup-item' : ''}">
                             <div class="item-main">
-                                <span class="delegate-name">${d.name} - ${d.phone \vert{}\vert{} 'لا يوجد رقم'} ${isThisBackup ? '🛡️' : ''}</span>
+                                <span class="delegate-name">${d.name} - ${d.phone || 'لا يوجد رقم'} ${isThisBackup ? '🛡️ (احتياطي)' : ''}</span>
                                 <div style="display:flex; gap:5px;">
                                     <button class="btn-whatsapp" onclick="sendWhatsApp('${d.id}')">💬 واتساب</button>
-                                    <button style="background:none; color:red; font-size: 16px; font-weight: bold; padding: 0 5px; cursor:pointer;" onclick="deleteDelegate('${d.id}')">×</button>
+                                    <button style="background:none; color:red; cursor:pointer;" onclick="deleteDelegate('${d.id}')">×</button>
                                 </div>
                             </div>
                             <div class="checkbox-group">
@@ -235,10 +199,10 @@
                 ${unassignedDelegates.map(d => `
                     <div class="delegate-item" style="border-right-color: var(--warning);">
                         <div class="item-main">
-                            <span class="delegate-name">${d.name} -${d.phone || 'لا يوجد رقم'}</span>
+                            <span class="delegate-name">${d.name} - ${d.phone || 'لا يوجد رقم'}</span>
                             <div style="display:flex; gap:5px;">
                                 <button class="btn-whatsapp" onclick="sendWhatsApp('${d.id}')">💬 واتساب</button>
-                                <button style="background:none; color:red; font-size: 16px; font-weight: bold; padding: 0 5px; cursor:pointer;" onclick="deleteDelegate('${d.id}')">×</button>
+                                <button style="background:none; color:red; cursor:pointer;" onclick="deleteDelegate('${d.id}')">×</button>
                             </div>
                         </div>
                         <div class="checkbox-group">
@@ -273,7 +237,7 @@
         let phone = document.getElementById('delegatePhone').value;
         if (!name) return;
         
-        phone = filterOmanPhone(phone); 
+        phone = filterOmanPhone(phone); // تطبيق دالة تصفية الرقم
 
         allDelegates.push({ id: Date.now().toString(), name: name, phone: phone, shiftIds: [], backupShiftIds: [] });
         document.getElementById('delegateName').value = '';
@@ -287,7 +251,8 @@
         lines.forEach(line => {
             const parts = line.split(/[،,]/);
             let phone = parts[1] ? parts[1].trim() : "";
-            phone = filterOmanPhone(phone); 
+            
+            phone = filterOmanPhone(phone); // تطبيق دالة تصفية الرقم
 
             allDelegates.push({ 
                 id: Math.random().toString(36).substr(2, 9), 
@@ -334,33 +299,37 @@
             message = `أهلاً ${delegate.name} \nأنت حالياً في قائمة الانتظار. سنقوم بالتواصل معك قريباً لتحديد موعد مناوبتك!`;
         }
         
-        window.open(`https://wa.me/968${delegate.phone}?text=${encodeURIComponent(message)}`, '_blank');
+        window.open(`https://wa.me/${delegate.phone}?text=${encodeURIComponent(message)}`, '_blank');
     }
 
     function toggleShift(delegateId, shiftId, type = 'primary') {
         const delegate = allDelegates.find(d => d.id === delegateId);
         if (delegate) {
             if (type === 'primary') {
+                // التأكد من عدم الجمع بين الفترة 6 والفترة 1 حتى يدوياً
                 if (!delegate.shiftIds.includes(shiftId)) {
                     if ((shiftId === 1 && delegate.shiftIds.includes(6)) || (shiftId === 6 && delegate.shiftIds.includes(1))) {
                         alert("تنبيه: لا يمكن الجمع بين الفترة 1 والفترة 6 للمندوب نفسه!");
                         return;
                     }
                 }
-                delegate.backupShiftIds = delegate.backupShiftIds.filter(id => id !== shiftId); 
+
+                delegate.backupShiftIds = delegate.backupShiftIds.filter(id => id !== shiftId); // حذفه من الاحتياطي لنفس الفترة إن وجد
                 if (delegate.shiftIds.includes(shiftId)) {
                     delegate.shiftIds = delegate.shiftIds.filter(id => id !== shiftId);
                 } else {
                     delegate.shiftIds.push(shiftId);
                 }
             } else {
+                // التأكد من عدم الجمع بين الفترة 6 والفترة 1 في الاحتياطي
                 if (!delegate.backupShiftIds.includes(shiftId)) {
                     if ((shiftId === 1 && delegate.backupShiftIds.includes(6)) || (shiftId === 6 && delegate.backupShiftIds.includes(1))) {
                         alert("تنبيه: لا يمكن الجمع بين الفترة 1 والفترة 6 للمندوب نفسه كاحتياطي!");
                         return;
                     }
                 }
-                delegate.shiftIds = delegate.shiftIds.filter(id => id !== shiftId); 
+
+                delegate.shiftIds = delegate.shiftIds.filter(id => id !== shiftId); // حذفه من الأساسي لنفس الفترة إن وجد
                 if (delegate.backupShiftIds.includes(shiftId)) {
                     delegate.backupShiftIds = delegate.backupShiftIds.filter(id => id !== shiftId);
                 } else {
@@ -378,18 +347,21 @@
         }
     }
 
+    // 2. خوارزمية التوزيع الذكي (شفتين للمندوب، لا للتتابع، 5 مسائي، 3 صباحي)
     function randomizeShifts() {
         if (allDelegates.length === 0) return alert("أضف مناديب أولاً!");
 
         allDelegates.forEach(d => { d.shiftIds = []; d.backupShiftIds = []; });
         let delegates = [...allDelegates];
 
+        // توزيع الأساسيين أولاً
         delegates.forEach(delegate => {
             let assigned = 0;
             let attempts = 0;
             
             while(assigned < 2 && attempts < 20) {
                 attempts++;
+                
                 let shiftNeeds = shiftsConfig.map(s => {
                     let currentCount = allDelegates.filter(d => d.shiftIds.includes(s.id)).length;
                     let target = (s.type === 'evening') ? 5 : 3;
@@ -401,11 +373,15 @@
                 for (let s of shiftNeeds) {
                     if (assigned >= 2) break;
                     let sId = s.id;
+
                     if (delegate.shiftIds.includes(sId)) continue;
+
+                    // منع الشفتات المتتالية ومنع الجمع بين 1 و 6
                     if (delegate.shiftIds.length === 1) {
                         if (Math.abs(delegate.shiftIds[0] - sId) <= 1) continue;
                         if ((delegate.shiftIds[0] === 6 && sId === 1) || (delegate.shiftIds[0] === 1 && sId === 6)) continue;
                     }
+
                     delegate.shiftIds.push(sId);
                     assigned++;
                     break; 
@@ -414,6 +390,7 @@
             delegate.shiftIds.sort((a,b) => a - b);
         });
 
+        // توزيع كابتن احتياطي واحد للفترات 1، 2، 3 بشكل عشوائي
         [1, 2, 3].forEach(sId => {
             let availableForBackup = delegates.filter(d => !d.shiftIds.includes(sId) && d.shiftIds.length < 3);
             if(availableForBackup.length > 0) {
@@ -425,6 +402,7 @@
         render();
     }
 
+    // 3. تصدير PDF احترافي (شفتين فقط في كل صفحة بالعرض لمنع الانقسام)
     function downloadPDF() {
         const pdfBtn = document.getElementById('pdfBtn');
         const originalText = pdfBtn.innerHTML;
@@ -435,6 +413,7 @@
 
         for (let i = 0; i < shiftsConfig.length; i += 2) {
             printHTML += `<div style="page-break-after: always; padding: 20px; box-sizing: border-box; min-height: 200mm;">`;
+            
             if (i === 0) {
                 printHTML += `<h1 style="text-align: center; color: #2c3e50; border-bottom: 2px solid #27ae60; padding-bottom: 10px; margin-bottom: 25px;">جدول مناوبات مناديب نعاون</h1>`;
             } else {
@@ -451,7 +430,7 @@
                     const headerBg = shift.type === 'morning' ? '#3498db' : '#8e44ad';
                     
                    let delegatesHTML = primary.map(d => {
-                        let cleanPhone = filterOmanPhone(d.phone); 
+                        let cleanPhone = filterOmanPhone(d.phone); // تنظيف الرقم القديم والجديد ليصبح 8 أرقام فقط
                         let phoneLink = cleanPhone ? `<a href="https://wa.me/968${cleanPhone}" style="color: #2980b9; text-decoration: none; direction: ltr; display: inline-block;" target="_blank">${cleanPhone}</a>` : 'لا يوجد رقم';
                         return `
                         <div style="background: #f9f9f9; padding: 12px; margin: 8px 0; border-right: 4px solid ${headerBg}; border-radius: 4px; border-left: 1px solid #eee; font-weight: bold; color: #333; font-size: 16px;">
@@ -460,7 +439,7 @@
                     }).join('');
 
                     let backupsHTML = backups.map(d => {
-                        let cleanPhone = filterOmanPhone(d.phone); 
+                        let cleanPhone = filterOmanPhone(d.phone); // تنظيف الرقم القديم والجديد ليصبح 8 أرقام فقط
                         let phoneLink = cleanPhone ? `<a href="https://wa.me/968${cleanPhone}" style="color: #2980b9; text-decoration: none; direction: ltr; display: inline-block;" target="_blank">${cleanPhone}</a>` : 'لا يوجد رقم';
                         return `
                         <div style="background: #fffaf0; padding: 12px; margin: 8px 0; border-right: 4px solid var(--backup); border-radius: 4px; border-left: 1px solid #eee; font-weight: bold; color: #d35400; font-size: 16px;">
@@ -491,7 +470,7 @@
             html2canvas: { scale: 2, useCORS: true }, 
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
             pagebreak: { mode: 'css' },
-            enableLinks: true 
+            enableLinks: true // 🌟 تم إضافة هذا السطر لتفعيل النقر على الأرقام
         };
 
         html2pdf().set(opt).from(printHTML).save().then(() => {
@@ -502,6 +481,7 @@
         });
     }
 
+    // 4. الحفظ في جوجل شيت
     function saveToGoogleSheet() {
         const btn = document.getElementById('syncBtn');
         const originalText = btn.innerHTML;
@@ -562,6 +542,7 @@
         });
     }
 
+    // 5. جلب الحجوزات من جوجل شيت (حجوزات_الغد)
     function fetchBookings() {
         const btn = document.querySelector('.btn-fetch');
         const originalText = btn.innerHTML;
@@ -579,8 +560,9 @@
                 
                 let newDelegates = {};
                 
+                // دمج بيانات المناديب المسترجعة
                 response.data.forEach(b => {
-                    let key = b.phone + "_" + b.name; 
+                    let key = b.phone + "_" + b.name; // مفتاح فريد لكل مندوب
                     if (!newDelegates[key]) {
                         newDelegates[key] = {
                             id: Math.random().toString(36).substr(2, 9),
@@ -598,6 +580,7 @@
                     }
                 });
 
+                // استبدال الجدول الحالي بالبيانات الجديدة القادمة من الحجوزات
                 allDelegates = Object.values(newDelegates);
                 render();
                 alert("✅ تم جلب وتوزيع حجوزات المناديب بنجاح! يمكنك الآن مراجعتها وطباعة الـ PDF.");
@@ -615,6 +598,7 @@
         });
     }
 
+    render();
     function clearTomorrow() {
         if(!confirm("⚠️ تحذير: هل أنت متأكد من تفريغ ورقة حجوزات الغد؟ (تأكد أنك قمت بالحفظ أولاً)")) return;
         
@@ -634,7 +618,6 @@
         .then(data => alert("✅ تم تحديث سعة الفترات بنجاح. سيتم تطبيقها فوراً على حجز المناديب."));
     }
     
-    render();
 </script>
 </body>
 </html>
