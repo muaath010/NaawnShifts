@@ -6,93 +6,107 @@
     <title>نظام توزيع مناديب نعاون </title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
-        :root {
-            --primary: #2c3e50;
-            --accent: #27ae60;
-            --whatsapp: #25D366;
-            --danger: #e74c3c;
-            --light: #ecf0f1;
-            --warning: #f39c12;
-            --blue: #2980b9;
-            --morning: #3498db;
-            --evening: #8e44ad;
-            --backup: #e67e22; /* لون خاص للاحتياطي */
-        }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; margin: 0; padding: 20px; color: var(--primary); }
-        .container { max-width: 1200px; margin: auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: var(--primary); border-bottom: 2px solid var(--accent); padding-bottom: 10px; }
+      :root { --primary: #2c3e50; --accent: #27ae60; --whatsapp: #25D366; --danger: #e74c3c; --light: #ecf0f1; --warning: #f39c12; --blue: #2980b9; --morning: #3498db; --evening: #8e44ad; --backup: #e67e22; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; margin: 0; padding: 15px; color: var(--primary); }
+        .container { max-width: 1200px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        h1 { text-align: center; color: var(--primary); border-bottom: 2px solid var(--accent); padding-bottom: 10px; font-size: 24px; margin-top: 0;}
         
-        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px; background: var(--light); padding: 15px; border-radius: 10px; }
+        .admin-section { background: var(--light); padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #dcdde1; }
+        .admin-section h3 { margin: 0 0 15px 0; font-size: 16px; color: #34495e; border-bottom: 1px solid #bdc3c7; padding-bottom: 8px; }
+        
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .input-group { display: flex; flex-direction: column; gap: 8px; }
         
-        button { padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
-        button:disabled { cursor: not-allowed; opacity: 0.7; }
+        .capacity-group { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; }
+        .capacity-group input { width: 70px; text-align: center; font-weight: bold; font-size: 16px; }
+        
+        .action-buttons { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+        
+        button { padding: 12px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
+        button:hover { opacity: 0.9; transform: translateY(-1px); }
+        button:disabled { cursor: not-allowed; opacity: 0.6; }
+        
         .btn-add { background: var(--accent); color: white; }
         .btn-random { background: #8e44ad; color: white; }
         .btn-pdf { background: #e67e22; color: white; }
         .btn-sync { background: var(--blue); color: white; }
-        .btn-print { background: #34495e; color: white; }
+        .btn-fetch { background: #16a085; color: white; }
+        .btn-danger { background: var(--danger); color: white; }
         .btn-whatsapp { background: var(--whatsapp); color: white; padding: 4px 8px; font-size: 11px; }
         
-        .action-buttons { grid-column: span 2; display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; }
-        .btn-fetch { background: #16a085; color: white; }
+        textarea, input[type="text"], input[type="tel"], input[type="number"] { padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit; }
+        textarea:focus, input:focus { border-color: var(--accent); outline: none; }
 
-        .shifts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px; }
-        .shift-card { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 12px; }
+        .shifts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
+        .shift-card { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
         .shift-header { font-weight: bold; color: white; padding: 8px; border-radius: 5px; margin-bottom: 10px; text-align: center; }
         .header-morning { background: var(--morning); }
         .header-evening { background: var(--evening); }
         
         .delegate-item { background: #f9f9f9; padding: 10px; margin: 8px 0; border-right: 4px solid var(--accent); border-radius: 4px; border-left: 1px solid #eee; }
-        .delegate-item.backup-item { border-right: 4px solid var(--backup); background: #fffaf0; } /* تمييز الاحتياطي */
+        .delegate-item.backup-item { border-right: 4px solid var(--backup); background: #fffaf0; }
         .item-main { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .delegate-name { font-weight: bold; }
+        .delegate-name { font-weight: bold; font-size: 14px; }
         
         .checkbox-group { display: flex; flex-wrap: wrap; gap: 4px; }
-        .checkbox-group label { background: #eee; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; }
-        .lbl-backup { border: 1px dashed var(--backup); } /* شكل زر الاحتياطي */
-        
-        textarea, input[type="text"] { padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-family: inherit; }
+        .checkbox-group label { background: #eee; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .lbl-backup { border: 1px dashed var(--backup); }
+
+        @media (max-width: 768px) {
+            .grid-2 { grid-template-columns: 1fr; }
+            .capacity-group { flex-direction: column; align-items: stretch; }
+            .capacity-group button { width: 100%; }
+            .action-buttons { grid-template-columns: 1fr 1fr; } 
+        }
+        @media (max-width: 480px) {
+            .action-buttons { grid-template-columns: 1fr; } 
+        }
+
         @media print {
-    .controls { display: none !important; }
-    body { background: white; padding: 0; }
-    .container { box-shadow: none; border: none; padding: 0; }
-}
+            .no-print { display: none !important; }
+            body { background: white; padding: 0; }
+            .container { box-shadow: none; border: none; padding: 0; max-width: 100%; }
+        }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h1> نظام مناوبات مناديب نعاون </h1>
-    <div class="controls" style="margin-bottom: 15px; background: #e8eaed;">
-        <div style="display: flex; gap: 15px; align-items: center; justify-content: center;">
-            <strong>⚙️ سعة الفترات ليوم غد:</strong>
-            <label>الصباحي:</label>
-            <input type="number" id="capMorning" value="5" style="width: 60px; text-align: center; padding: 5px;">
-            <label>المسائي:</label>
-            <input type="number" id="capEvening" value="5" style="width: 60px; text-align: center; padding: 5px;">
-            <button class="btn-sync" style="padding: 6px 15px;" onclick="updateCapacity()">حفظ السعة</button>
+<h1 class="no-print">لوحة إدارة مناوبات نعاون ⚙️</h1>
+
+    <div class="admin-section no-print">
+        <h3>🛠️ العمليات الأساسية</h3>
+        <div class="action-buttons">
+            <button class="btn-fetch" onclick="fetchBookings()">📥 جلب حجوزات المناديب</button>
+            <button id="syncBtn" class="btn-sync" onclick="saveToGoogleSheet()">☁️ اعتماد وحفظ في الشيت</button>
+            <button id="pdfBtn" class="btn-pdf" onclick="downloadPDF()">📄 تصدير الجدول كـ PDF</button>
+            <button class="btn-danger" onclick="clearTomorrow()">🗑️ تفريغ حجوزات الغد</button>
+            <button class="btn-random" onclick="randomizeShifts()">🎲 توزيع ذكي (تلقائي)</button>
         </div>
     </div>
 
-    <div class="controls">
-        <div class="input-group">
-            <input type="text" id="delegateName" placeholder="اسم المندوب">
-            <input type="text" id="delegatePhone" placeholder="رقم الواتساب (مثال: 9665xxxxx)">
-            <button class="btn-add" onclick="addSingle()">➕ إضافة مندوب</button>
+    <div class="admin-section no-print">
+        <h3>📊 سعة الفترات (تطبق فوراً في صفحة المناديب)</h3>
+        <div class="capacity-group">
+            <label>الصباحي:</label>
+            <input type="number" id="capMorning" value="5">
+            <label>المسائي:</label>
+            <input type="number" id="capEvening" value="5">
+            <button class="btn-sync" onclick="updateCapacity()">💾 تحديث السعة</button>
         </div>
-        <div class="input-group">
-            <textarea id="bulkInput" placeholder="لصق (اسم المندوب، الرقم) كل واحد في سطر..."></textarea>
-            <button class="btn-add" onclick="addBulk()">📋 إضافة القائمة</button>
-        </div>
-        
-        <div class="action-buttons">
-            <button class="btn-fetch" onclick="fetchBookings()">📥 جلب حجوزات المناديب</button>
-            <button class="btn-random" onclick="randomizeShifts()">🎲 توزيع ذكي (شفتين / بدون توالي)</button>
-            <button id="pdfBtn" class="btn-pdf" onclick="downloadPDF()">📄 تصدير الجدول PDF</button>
-            <button id="syncBtn" class="btn-sync" onclick="saveToGoogleSheet()">☁️ حفظ في جوجل شيت</button>
-            <button class="btn-add" style="background: var(--danger); width: 100%; grid-column: span 5;" onclick="clearTomorrow()">🗑️ تفريغ حجوزات</button>
-            <!--<button class="btn-print" onclick="window.print()">🖨️ طباعة الجدول</button>-->
+    </div>
+
+    <div class="admin-section no-print">
+        <h3>👤 إضافة مناديب يدوياً (للتعديلات الطارئة)</h3>
+        <div class="grid-2">
+            <div class="input-group">
+                <input type="text" id="delegateName" placeholder="الاسم الكريم">
+                <input type="tel" id="delegatePhone" placeholder="رقم الواتساب (انجليزي)" dir="ltr">
+                <button class="btn-add" onclick="addSingle()">➕ إضافة فردية</button>
+            </div>
+            <div class="input-group">
+                <textarea id="bulkInput" rows="3" placeholder="لصق (اسم المندوب، الرقم) كل واحد في سطر..."></textarea>
+                <button class="btn-add" onclick="addBulk()">📋 إضافة مجموعة دفعة واحدة</button>
+            </div>
         </div>
     </div>
 
@@ -542,8 +556,7 @@
         });
     }
 
-    // 5. جلب الحجوزات من جوجل شيت (حجوزات_الغد)
-    function fetchBookings() {
+   function fetchBookings() {
         const btn = document.querySelector('.btn-fetch');
         const originalText = btn.innerHTML;
         btn.innerHTML = '⏳ جاري الجلب...';
@@ -553,51 +566,42 @@
         .then(res => res.json())
         .then(response => {
             if (response.status === 'success') {
+                
+                // 🌟 قراءة السعة الحقيقية من الشيت وتحديث الشاشة فوراً 🌟
+                if (response.capacities) {
+                    document.getElementById('capMorning').value = response.capacities.morning;
+                    document.getElementById('capEvening').value = response.capacities.evening;
+                }
+
                 if (response.data.length === 0) {
-                    alert("ℹ️ ورقة حجوزات_الغد فارغة حالياً.");
-                    return;
+                    return; // البقاء بصمت لتحديث الأرقام فقط إذا كانت فارغة
                 }
                 
                 let newDelegates = {};
-                
-                // دمج بيانات المناديب المسترجعة
                 response.data.forEach(b => {
-                    let key = b.phone + "_" + b.name; // مفتاح فريد لكل مندوب
+                    let key = b.phone + "_" + b.name; 
                     if (!newDelegates[key]) {
-                        newDelegates[key] = {
-                            id: Math.random().toString(36).substr(2, 9),
-                            name: b.name,
-                            phone: filterOmanPhone(b.phone),
-                            shiftIds: [],
-                            backupShiftIds: []
-                        };
+                        newDelegates[key] = { id: Math.random().toString(36).substr(2, 9), name: b.name, phone: filterOmanPhone(b.phone), shiftIds: [], backupShiftIds: [] };
                     }
-                    
-                    if (b.isBackup) {
-                        newDelegates[key].backupShiftIds.push(b.shiftId);
-                    } else {
-                        newDelegates[key].shiftIds.push(b.shiftId);
-                    }
+                    if (b.isBackup) newDelegates[key].backupShiftIds.push(b.shiftId);
+                    else newDelegates[key].shiftIds.push(b.shiftId);
                 });
 
-                // استبدال الجدول الحالي بالبيانات الجديدة القادمة من الحجوزات
                 allDelegates = Object.values(newDelegates);
                 render();
-                alert("✅ تم جلب وتوزيع حجوزات المناديب بنجاح! يمكنك الآن مراجعتها وطباعة الـ PDF.");
+                
+                // 🌟 تنفيذ تفريغ حجوزات الغد تلقائياً في الخلفية بعد الجلب 🌟
+                fetch(WEB_APP_URL + "?action=clearTomorrow", { method: 'POST', body: JSON.stringify({}) });
+                
+                alert("✅ تم جلب الحجوزات بنجاح! وتم تفريغ ورقة (حجوزات الغد) آلياً للاستعداد لليوم التالي.");
             } else {
                 alert("⚠️ " + (response.message || "حدث خطأ في الجلب."));
             }
         })
-        .catch(err => {
-            console.error("Fetch Error: ", err);
-            alert("❌ حدث خطأ في الاتصال بالخادم. تأكد من عمل (إصدار جديد) في جوجل شيت.");
-        })
-        .finally(() => {
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-        });
+        .catch(err => { alert("❌ حدث خطأ في الاتصال بالخادم."); })
+        .finally(() => { btn.innerHTML = originalText; btn.disabled = false; });
     }
-
+    
     render();
     function clearTomorrow() {
         if(!confirm("⚠️ تحذير: هل أنت متأكد من تفريغ ورقة حجوزات الغد؟ (تأكد أنك قمت بالحفظ أولاً)")) return;
@@ -617,6 +621,9 @@
         }).then(res => res.json())
         .then(data => alert("✅ تم تحديث سعة الفترات بنجاح. سيتم تطبيقها فوراً على حجز المناديب."));
     }
+
+    // التحديث الآلي عند فتح لوحة الإدارة
+    window.onload = fetchBookings;
     
 </script>
 </body>
