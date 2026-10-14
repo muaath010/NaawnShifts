@@ -87,10 +87,10 @@
     <div class="admin-section no-print">
         <h3>📊 سعة الفترات (تطبق فوراً في صفحة المناديب)</h3>
         <div class="capacity-group">
-            <label>الصباحي:</label>
-            <input type="number" id="capMorning" value="5">
-            <label>المسائي:</label>
-            <input type="number" id="capEvening" value="5">
+            <label>فـ 1:</label><input type="number" id="cap1" value="5" style="width: 45px; padding: 5px;">
+            <label>فـ 2:</label><input type="number" id="cap2" value="5" style="width: 45px; padding: 5px;">
+            <label>فـ 3:</label><input type="number" id="cap3" value="5" style="width: 45px; padding: 5px;">
+            <label>المسائي:</label><input type="number" id="capEvening" value="5" style="width: 45px; padding: 5px;">
             <button class="btn-sync" onclick="updateCapacity()">💾 تحديث السعة</button>
         </div>
     </div>
@@ -568,8 +568,10 @@
             if (response.status === 'success') {
                 
                 // 🌟 قراءة السعة الحقيقية من الشيت وتحديث الشاشة فوراً 🌟
-                if (response.capacities) {
-                    document.getElementById('capMorning').value = response.capacities.morning;
+if (response.capacities) {
+                    document.getElementById('cap1').value = response.capacities.shift1;
+                    document.getElementById('cap2').value = response.capacities.shift2;
+                    document.getElementById('cap3').value = response.capacities.shift3;
                     document.getElementById('capEvening').value = response.capacities.evening;
                 }
 
@@ -613,15 +615,16 @@
     }
 
     function updateCapacity() {
-        const morning = document.getElementById('capMorning').value;
+        const cap1 = document.getElementById('cap1').value;
+        const cap2 = document.getElementById('cap2').value;
+        const cap3 = document.getElementById('cap3').value;
         const evening = document.getElementById('capEvening').value;
         fetch(WEB_APP_URL + "?action=updateCapacity", {
             method: 'POST',
-            body: JSON.stringify({ morning: morning, evening: evening })
+            body: JSON.stringify({ shift1: cap1, shift2: cap2, shift3: cap3, evening: evening })
         }).then(res => res.json())
-        .then(data => alert("✅ تم تحديث سعة الفترات بنجاح. سيتم تطبيقها فوراً على حجز المناديب."));
+        .then(data => alert("✅ تم تحديث السعات المستقلة بنجاح."));
     }
-
     // التحديث الآلي عند فتح لوحة الإدارة
     //window.onload = fetchBookings;
     
