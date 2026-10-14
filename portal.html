@@ -175,7 +175,7 @@
 
 
    <script>
-    let shiftCapacities = { morning: 5, evening: 5 };
+    let shiftCapacities = { shift1: 5, shift2: 5, shift3: 5, evening: 5 };
 
     const shiftsConfig = [
         { id: 1, time: "08:00 ص → 11:00 ص", type: "morning", needsBackup: true },
@@ -240,7 +240,7 @@
             currentUser.phone = cleanPhone;
             currentShiftCounts = response.shiftCounts || {}; 
             currentBackupCounts = response.backupCounts || {}; 
-            shiftCapacities = response.capacities || { morning: 5, evening: 5 };
+           shiftCapacities = response.capacities || { shift1: 5, shift2: 5, shift3: 5, evening: 5 };
 
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('bookingSection').style.display = 'block';
@@ -268,7 +268,10 @@
             let disablePrimary = false;
             let disableBackup = false;
             
-            let capacityLimit = shift.type === 'morning' ? shiftCapacities.morning : shiftCapacities.evening;
+           let capacityLimit = (shift.id === 1) ? shiftCapacities.shift1 : 
+                                (shift.id === 2) ? shiftCapacities.shift2 : 
+                                (shift.id === 3) ? shiftCapacities.shift3 : 
+                                shiftCapacities.evening;
             let bookedCount = currentShiftCounts[shift.id] || 0;
             let isFull = (bookedCount >= capacityLimit);
             
