@@ -1,431 +1,375 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>بوابة مناوبات نعاون</title>
-<style>
-  :root {
-    --primary: #2c3e50; --accent: #27ae60; --danger: #e74c3c; --warning: #f39c12;
-    --morning: #3498db; --evening: #8e44ad; --backup: #e67e22; --midday: #d35400;
-    --bg: #f4f7f6; --card: #ffffff; --line: #e1e5e8; --muted: #7f8c8d;
-  }
-  * { box-sizing: border-box; }
-  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); margin: 0; padding: 12px; color: var(--primary); }
-  .container { max-width: 560px; margin: 0 auto; background: var(--card); padding: 18px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
-  h1 { text-align: center; font-size: 21px; border-bottom: 2px solid var(--accent); padding-bottom: 10px; margin: 0 0 15px; }
-  h2 { font-size: 17px; margin: 18px 0 10px; }
-  .hidden { display: none !important; }
-  input { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 17px; font-family: inherit; text-align: center; }
-  input:focus { border-color: var(--accent); outline: none; }
-  button { font-family: inherit; cursor: pointer; border: none; border-radius: 8px; font-weight: bold; }
-  .btn { width: 100%; padding: 13px; font-size: 16px; background: var(--accent); color: #fff; margin-top: 10px; }
-  .btn:disabled { background: #95a5a6; cursor: not-allowed; }
-  .btn-light { background: #ecf0f1; color: var(--primary); padding: 9px 12px; font-size: 13px; }
-  .banner { padding: 11px 12px; border-radius: 8px; font-size: 14px; line-height: 1.7; margin-bottom: 12px; }
-  .b-ok { background: #e8f8f5; border-right: 4px solid var(--accent); }
-  .b-closed { background: #fdedec; border-right: 4px solid var(--danger); color: #922b21; }
-  .b-info { background: #eef5fb; border-right: 4px solid var(--morning); }
-  .b-warn { background: #fef5e7; border-right: 4px solid var(--warning); }
-  .msg { margin-top: 10px; font-weight: bold; text-align: center; font-size: 14px; min-height: 20px; }
-  .msg.err { color: var(--danger); } .msg.ok { color: var(--accent); }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>بوابة حجز مناوبات نعاون</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #27ae60;
+            --danger: #e74c3c;
+            --light: #ecf0f1;
+            --warning: #f39c12;
+            --morning: #3498db;
+            --evening: #8e44ad;
+            --backup: #e67e22;
+        }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: #f4f7f6; 
+            margin: 0; 
+            padding: 15px; 
+            color: var(--primary); 
+        }
+        .container { 
+            max-width: 500px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 20px; 
+            border-radius: 15px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+        }
+        h1, h2 { text-align: center; color: var(--primary); }
+        h1 { border-bottom: 2px solid var(--accent); padding-bottom: 10px; font-size: 22px; }
+        
+        #loginSection, #closedSection { display: flex; flex-direction: column; gap: 15px; margin-top: 30px; }
+        
+        /* تصميم شاشة الإغلاق */
+        #closedSection {
+            text-align: center; 
+            padding: 30px 15px; 
+            background: #fdedec; 
+            border-radius: 10px; 
+            border: 2px dashed var(--danger);
+            color: var(--danger);
+            display: none; /* مخفي افتراضياً */
+        }
 
-  .sched-card { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
-  .sched-card h3 { margin: 0 0 8px; font-size: 14px; color: var(--muted); }
-  .sched-row { padding: 7px 10px; margin: 5px 0; background: #f9f9f9; border-right: 4px solid var(--accent); border-radius: 4px; font-size: 14px; }
-  .sched-row.backup { border-right-color: var(--backup); background: #fffaf0; }
+        input { 
+            padding: 12px; 
+            border: 2px solid #ddd; 
+            border-radius: 8px; 
+            font-size: 16px; 
+            font-family: inherit;
+            text-align: center;
+        }
+        input:focus { border-color: var(--accent); outline: none; }
+        
+        button { 
+            padding: 12px; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            font-size: 16px;
+            transition: 0.3s; 
+            width: 100%;
+        }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:disabled { background: #95a5a6; cursor: not-allowed; }
+        
+        #bookingSection { display: none; }
+        .info-banner {
+            background: #e8f8f5;
+            border-right: 4px solid var(--accent);
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .alert-banner {
+            background: #fdedec;
+            border-right: 4px solid var(--danger);
+            color: var(--danger);
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            display: none; 
+        }
 
-  .wanted { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #f8f9fa; padding: 10px 12px; border-radius: 10px; margin-bottom: 12px; }
-  .stepper { display: flex; align-items: center; gap: 8px; }
-  .stepper button { width: 38px; height: 38px; font-size: 20px; background: var(--primary); color: #fff; }
-  .stepper span { min-width: 30px; text-align: center; font-size: 20px; font-weight: bold; }
+        .shift-card { 
+            background: #fff; 
+            border: 1px solid #ddd; 
+            border-radius: 10px; 
+            padding: 15px; 
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .shift-header { 
+            font-weight: bold; 
+            color: white; 
+            padding: 8px; 
+            border-radius: 5px; 
+            text-align: center; 
+        }
+        .header-morning { background: var(--morning); }
+        .header-evening { background: var(--evening); }
+        
+        .action-buttons { display: flex; gap: 10px; }
+        .btn-shift { 
+            background: #eee; 
+            color: #333; 
+            flex: 1; 
+            font-size: 14px;
+            border: 2px solid transparent;
+        }
+        .btn-shift.active-primary { background: var(--accent); color: white; border-color: #1e8449; }
+        .btn-shift.active-backup { background: var(--backup); color: white; border-color: #d35400; }
+        .btn-shift.disabled { opacity: 0.5; cursor: not-allowed; }
 
-  .legend { display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px; margin-bottom: 10px; }
-  .legend span { padding: 4px 8px; border-radius: 5px; }
-  .tools { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-  .counter { font-size: 13px; font-weight: bold; padding: 8px 10px; border-radius: 6px; background: #f8f9fa; margin-bottom: 10px; text-align: center; }
-  .counter.over { background: #fdedec; color: var(--danger); }
-
-  .day { border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 10px; }
-  .day-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-weight: bold; }
-  .day-head button { padding: 5px 9px; font-size: 12px; background: #ecf0f1; color: var(--primary); }
-  .cells { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-  .cell { padding: 8px 4px; border-radius: 8px; font-size: 12px; line-height: 1.5; border: 2px solid transparent; min-height: 64px; }
-  .cell b { display: block; font-size: 13px; }
-  .cell small { display: block; direction: ltr; color: inherit; opacity: .85; font-size: 10.5px; }
-  .s-A { background: #ecf0f1; color: #34495e; }
-  .s-P { background: var(--accent); color: #fff; border-color: #1e8449; }
-  .s-X { background: #fdedec; color: #922b21; border-color: var(--danger); text-decoration: line-through; }
-  .s-C, .s-L { background: #eceff1; color: #78909c; border-color: #cfd8dc; cursor: not-allowed; }
-  .s-L { background: #eaf2f8; color: #5d6d7e; }
-  .req-box { border: 1px dashed #bdc3c7; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
-  .req-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; margin: 6px 0; background: #f8f9fa; border-radius: 6px; font-size: 13px; }
-  .req-row .st { font-weight: bold; white-space: nowrap; }
-  .st-wait { color: #b9770e; } .st-ok { color: var(--accent); }
-  .form-box { background: #fbfcfc; border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-top: 10px; }
-  .form-box label { display: block; font-size: 13px; margin: 8px 0 4px; font-weight: bold; }
-  .form-box input[type=date], .form-box textarea { width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-family: inherit; font-size: 15px; text-align: right; }
-  .quick { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
-  .quick button { padding: 6px 9px; font-size: 12px; background: #ecf0f1; color: var(--primary); }
-  .tbl-grid { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .tbl-grid th, .tbl-grid td { padding: 3px; text-align: center; }
-  .tbl-grid button { width: 100%; padding: 8px 0; font-size: 12px; background: #ecf0f1; color: #34495e; }
-  .tbl-grid button.on { background: #fdedec; color: #922b21; border: 2px solid var(--danger); }
-  .tag-mid { font-size: 10px; background: var(--midday); color: #fff; border-radius: 4px; padding: 0 4px; margin-right: 3px; text-decoration: none; display: inline-block; }
-  @media (max-width: 360px) { .cells { grid-template-columns: repeat(2, 1fr); } }
-</style>
+        .loader {
+            display: none;
+            text-align: center;
+            margin-top: 15px;
+            font-weight: bold;
+            color: var(--accent);
+        }
+    </style>
 </head>
 <body>
+
 <div class="container">
-  <h1>بوابة مناوبات نعاون</h1>
+    <h1>بوابة حجز مناوبات نعاون</h1>
 
-  <div id="loading" class="msg">⏳ جاري التحميل...</div>
-
-  <!-- تسجيل الدخول -->
-  <div id="loginSection" class="hidden">
-    <div id="portalBanner"></div>
-    <p style="text-align:center; color: var(--muted); font-size: 14px;">أدخل رقم الواتساب المسجل لدى الإدارة</p>
-    <input type="tel" id="phone" placeholder="مثال: 9xxxxxxx" dir="ltr" inputmode="numeric" autocomplete="tel">
-    <button id="loginBtn" class="btn" onclick="login()">دخول</button>
-    <div id="loginMsg" class="msg"></div>
-  </div>
-
-  <!-- بعد الدخول -->
-  <div id="mainSection" class="hidden">
-    <div class="banner b-ok">أهلاً كابتن <b id="userName"></b> 👋</div>
-
-    <div id="mySchedules"></div>
-
-    <!-- الطلبات الخاصة: قيد ثابت أو إجازة (تعتمدها الإدارة) -->
-    <div class="req-box">
-      <h2 style="margin-top: 0;">📌 القيود والإجازات</h2>
-      <div id="myRequests"></div>
-      <div class="tools" style="margin: 8px 0 0;">
-        <button class="btn-light" onclick="openForm('consForm')">📚 طلب قيد ثابت (دراسة / عمل)</button>
-        <button class="btn-light" onclick="openForm('leaveForm')">🏖️ طلب إجازة</button>
-      </div>
-
-      <div id="consForm" class="form-box hidden">
-        <div class="banner b-info" style="margin-bottom: 8px;">حدد الفترات التي <b>لا تستطيع العمل فيها أبداً</b> بسبب التزام ثابت. بعد اعتماد الإدارة يُطبَّق القيد تلقائياً كل أسبوع.</div>
-        <div class="quick">
-          <button onclick="consColumn([1])">لا صباح (ف1)</button>
-          <button onclick="consColumn([2,3])">لا ظهر (ف2، ف3)</button>
-          <button onclick="consColumn([4,5,6])">لا مساء (ف4–ف6)</button>
-          <button onclick="consClear()">مسح</button>
-        </div>
-        <div style="overflow-x: auto;"><table class="tbl-grid" id="consGrid"></table></div>
-        <label for="consReason">السبب</label>
-        <textarea id="consReason" rows="2" placeholder="مثال: دراسة جامعية من الأحد إلى الخميس صباحاً"></textarea>
-        <button class="btn" onclick="sendConstraint()">إرسال الطلب للإدارة</button>
-        <div id="consMsg" class="msg"></div>
-      </div>
-
-      <div id="leaveForm" class="form-box hidden">
-        <label for="leaveFrom">من تاريخ</label>
-        <input type="date" id="leaveFrom">
-        <label for="leaveTo">إلى تاريخ</label>
-        <input type="date" id="leaveTo">
-        <label for="leaveReason">السبب</label>
-        <textarea id="leaveReason" rows="2" placeholder="مثال: سفر، امتحانات، ظرف عائلي"></textarea>
-        <button class="btn" onclick="sendLeave()">إرسال الطلب للإدارة</button>
-        <div id="leaveMsg" class="msg"></div>
-      </div>
+    <!-- 🌟 شاشة الإغلاق (تظهر خارج أوقات العمل) 🌟 -->
+    <div id="closedSection">
+        <h2 style="margin-top: 0;">🚫 البوابة مغلقة حالياً</h2>
+        <p style="font-size: 16px; color: #333; line-height: 1.6;">
+            أوقات الحجز اليومية تبدأ من الساعة <strong style="color: var(--danger);">2:00 ظهراً</strong> وتنتهي الساعة <strong style="color: var(--danger);">5:00 عصراً</strong>   
+        </p>
+        <p style="color: #777; font-size: 14px;">يرجى العودة خلال أوقات العمل المحددة !</p>
     </div>
 
-    <div id="prefsClosed" class="banner b-closed hidden"></div>
-
-    <div id="prefsSection" class="hidden">
-      <h2>📝 رغباتك للأسبوع القادم <small id="prefsWeek" style="color: var(--muted); font-weight: normal;"></small></h2>
-      <div class="banner b-info">
-        <b>طريقة الإدخال:</b> اضغط على الفترة لتغيير حالتها:<br>
-        ⚪ <b>ممكن</b> (الافتراضي) ← ✅ <b>مفضّل</b> ← ❌ <b>غير متاح</b><br>
-        <b>كيف يتم التوزيع؟</b> يحاول النظام إعطاءك فتراتك المفضّلة قدر الإمكان. فترات الظهر <span class="tag-mid">ظهر</span> تُوزَّع <b>بالتناوب وبالعدل</b> على الجميع، ومن يختارها مفضّلة يأخذها أولاً.<br>
-        اختر <b>غير متاح</b> فقط عند وجود التزام فعلي. يمكنك تعديل رغباتك حتى إغلاق البوابة.
-      </div>
-      <div id="savedBanner" class="banner b-ok hidden"></div>
-
-      <div class="wanted">
-        <span>كم مناوبة تريد هذا الأسبوع؟</span>
-        <div class="stepper">
-          <button onclick="changeWanted(-1)">−</button>
-          <span id="wantedVal">8</span>
-          <button onclick="changeWanted(1)">+</button>
-        </div>
-      </div>
-
-      <div class="tools">
-        <button id="lastBtn" class="btn-light hidden" onclick="useLast()">↩️ نفس رغباتي السابقة</button>
-        <button class="btn-light" onclick="resetAll()">🧹 إعادة الكل إلى (ممكن)</button>
-      </div>
-      <div class="legend">
-        <span class="s-A">⚪ ممكن</span><span class="s-P">✅ مفضّل</span><span class="s-X">❌ غير متاح</span>
-      </div>
-      <div id="xCounter" class="counter"></div>
-
-      <div id="daysContainer"></div>
-
-      <button id="saveBtn" class="btn" onclick="savePrefs()">💾 حفظ الرغبات</button>
-      <div id="saveMsg" class="msg"></div>
+    <!-- شاشة تسجيل الدخول -->
+    <div id="loginSection">
+        <p style="text-align: center; color: #7f8c8d; font-size: 14px;">الرجاء إدخال بياناتك للتحقق من السجل والدخول</p>
+        <input type="text" id="delegateName" placeholder="الاسم الكريم">
+        <input type="tel" id="delegatePhone" placeholder="رقم الواتساب" dir="ltr">
+        <button id="loginBtn" class="btn-primary" onclick="login()">دخول وعرض الفترات</button>
+        <div id="loginLoader" class="loader">⏳ جاري التحقق من السجل، يرجى الانتظار...</div>
     </div>
-  </div>
+
+    <!-- شاشة اختيار الفترات -->
+    <div id="bookingSection">
+        <div class="info-banner">
+            أهلاً بك كابتن <span id="displayName" style="font-weight:bold;"></span> 👋<br>
+            <strong>تعليمات الحجز :</strong><br>
+            1️⃣ يمكنك اختيار فترتين (أساسية) كحد أقصى.<br>
+            2️⃣ يُمنع اختيار فترات متتالية .<br>
+        </div>
+
+        
+
+        <div id="shiftsContainer"></div>
+
+        <button id="submitBtn" class="btn-primary" style="margin-top: 20px;" onclick="submitBooking()">✅ تأكيد واعتماد الحجز</button>
+        <div id="loader" class="loader">⏳ جاري إرسال حجزك للنظام، يرجى الانتظار...</div>
+    </div>
 </div>
 
-<script>
-  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxBFyb77kdiV3MmRBhkiTaEXsVjlww3-pVLxmgRTaDEDiyDy6NUv8tk0Lpr1h-g6AlU5w/exec";
 
-  let D = null;            // بيانات الدخول من الخادم
-  let phone = "";
-  let cells = [];          // 42 خانة: A ممكن / P مفضل / X غير متاح
-  let wanted = 8;
-  const NEXT = { A: "P", P: "X", X: "A" };
+   <script>
+    let shiftCapacities = { shift1: 5, shift2: 5, shift3: 5, evening: 5 };
 
-  const $ = id => document.getElementById(id);
-  const show = (id, on) => $(id).classList.toggle("hidden", !on);
-  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
-  function setMsg(id, text, ok) { const el = $(id); el.textContent = text || ""; el.className = "msg " + (ok ? "ok" : "err"); }
+    const shiftsConfig = [
+        { id: 1, time: "08:00 ص → 11:00 ص", type: "morning", needsBackup: true },
+        { id: 2, time: "11:00 ص → 02:00 م", type: "morning", needsBackup: true },
+        { id: 3, time: "02:00 م → 05:00 م", type: "morning", needsBackup: true },
+        { id: 4, time: "05:00 م → 07:30 م", type: "evening", needsBackup: false },
+        { id: 5, time: "07:30 م → 10:00 م", type: "evening", needsBackup: false },
+        { id: 6, time: "10:00 م → 01:00 ص", type: "evening", needsBackup: false }
+    ];
 
-  function filterOmanPhone(p) {
-    p = String(p || "").replace(/\D/g, "");
-    if (p.startsWith("968") && p.length >= 11) return p.substring(3, 11);
-    if (p.length > 8) return p.slice(-8);
-    return p;
-  }
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxBFyb77kdiV3MmRBhkiTaEXsVjlww3-pVLxmgRTaDEDiyDy6NUv8tk0Lpr1h-g6AlU5w/exec";
 
-  async function api(action, params, body) {
-    const qs = new URLSearchParams(Object.assign({ action }, params || {})).toString();
-    const opt = body ? { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) } : {};
-    const res = await fetch(WEB_APP_URL + "?" + qs, opt);
-    return res.json();
-  }
+    let currentUser = { name: "", phone: "" };
+    let selectedPrimary = [];
+    let selectedBackup = [];
+    let currentShiftCounts = {}; 
+    let currentBackupCounts = {}; // 🌟 جديد: لتخزين عدد الاحتياطي
 
-  window.onload = async function () {
-    try { const saved = localStorage.getItem("naawn_phone"); if (saved) $("phone").value = saved; } catch (e) {}
-    try {
-      const s = await api("portalStatus");
-      $("portalBanner").innerHTML = s.open
-        ? `<div class="banner b-ok">✅ إدخال الرغبات مفتوح الآن لأسبوع <b>${esc(s.weekLabel)}</b></div>`
-        : `<div class="banner b-closed">🔒 إدخال الرغبات مغلق حالياً.<br>أوقات الإدخال: <b>${esc(s.windowText)}</b><br>يمكنك الدخول لعرض جدولك المعتمد.</div>`;
-    } catch (e) { $("portalBanner").innerHTML = ""; }
-    show("loading", false); show("loginSection", true);
-  };
+    window.onload = function() {
+        try {
+            let omanTime = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Muscat"}));
+            let hour = omanTime.getHours();
+            if (hour < 14 || hour >= 17) {
+                document.getElementById('loginSection').style.display = 'none';
+                document.getElementById('closedSection').style.display = 'flex';
+            }
+        } catch(e) {}
+    };
 
-  async function login() {
-    const p = filterOmanPhone($("phone").value);
-    if (p.length !== 8) return setMsg("loginMsg", "يرجى إدخال رقم واتساب صحيح (8 أرقام).");
-    $("loginBtn").disabled = true; setMsg("loginMsg", "⏳ جاري التحقق...", true);
-    try {
-      const r = await api("login", { phone: p });
-      if (r.status !== "success") { setMsg("loginMsg", r.message || "حدث خطأ."); return; }
-      try { localStorage.setItem("naawn_phone", p); } catch (e) {}
-      phone = p; D = r;
-      renderMain();
-    } catch (e) {
-      setMsg("loginMsg", "❌ تعذر الاتصال بالخادم، تحقق من الإنترنت وحاول مجدداً.");
-    } finally { $("loginBtn").disabled = false; }
-  }
-
-  function shiftTime(id) { const s = D.config.shifts.find(x => x.id === id); return s ? s.time : ""; }
-
-  function renderMain() {
-    show("loginSection", false); show("mainSection", true);
-    $("userName").textContent = D.name;
-
-    // الجداول المعتمدة
-    let html = "";
-    D.schedules.forEach((s, i) => {
-      if (!s.approved) return;
-      const title = i === 0 ? "📅 جدولك هذا الأسبوع" : "📅 جدولك للأسبوع القادم";
-      const body = s.items.length
-        ? s.items.map(it => `<div class="sched-row ${it.role === "احتياطي" ? "backup" : ""}">${esc(s.dayLabels[it.day])} — <b>الفترة ${it.shift}</b> <small dir="ltr">(${esc(shiftTime(it.shift))})</small>${it.role === "احتياطي" ? " 🛡️ احتياطي" : ""}</div>`).join("")
-        : `<div style="color: var(--muted); font-size: 14px;">لا توجد لديك مناوبات في هذا الأسبوع.</div>`;
-      html += `<div class="sched-card"><h3>${title} — ${esc(s.weekLabel)}</h3>${body}</div>`;
-    });
-    $("mySchedules").innerHTML = html;
-    renderRequests();
-
-    if (!D.open) {
-      show("prefsSection", false); show("prefsClosed", true);
-      $("prefsClosed").innerHTML = `🔒 إدخال رغبات الأسبوع القادم مغلق الآن.<br>أوقات الإدخال: <b>${esc(D.windowText)}</b>`;
-      return;
+    function filterOmanPhone(phoneStr) {
+        if (!phoneStr) return "";
+        let p = phoneStr.toString().replace(/\D/g, '');
+        if (p.startsWith("968") && p.length >= 11) return p.substring(3, 11);
+        if (p.length > 8) return p.slice(-8);
+        return p;
     }
-    if (D.blocks.indexOf("-") === -1) {
-      show("prefsSection", false); show("prefsClosed", true);
-      $("prefsClosed").className = "banner b-ok";
-      $("prefsClosed").innerHTML = `🏖️ لديك إجازة معتمدة طوال أسبوع ${esc(D.weekLabel)}، لا حاجة لإدخال رغبات.`;
-      return;
+
+    function login() {
+        const nameInput = document.getElementById('delegateName').value.trim();
+        const phoneInput = document.getElementById('delegatePhone').value.trim();
+        if (!nameInput || !phoneInput) return alert("يرجى إدخال الاسم ورقم الجوال للمتابعة.");
+
+        let cleanPhone = filterOmanPhone(phoneInput);
+        document.getElementById('loginBtn').style.display = 'none';
+        document.getElementById('loginLoader').style.display = 'block';
+
+        fetch(WEB_APP_URL + "?action=checkUser&phone=" + cleanPhone)
+        .then(res => res.json())
+        .then(response => {
+            if (response.status === "closed") {
+                document.getElementById('loginSection').style.display = 'none';
+                document.getElementById('closedSection').style.display = 'flex';
+                return;
+            }
+            if (response.hasBooked) {
+                document.getElementById('loginBtn').style.display = 'block';
+                document.getElementById('loginLoader').style.display = 'none';
+                return alert("🚫 عذراً، لقد قمت بتسجيل فتراتك ليوم غد مسبقاً ولن تتمكن من تعديلها أو إرسال حجز جديد.");
+            }
+
+            currentUser.name = (response.name && response.name !== "مندوب") ? response.name : nameInput;
+            currentUser.phone = cleanPhone;
+            currentShiftCounts = response.shiftCounts || {}; 
+            currentBackupCounts = response.backupCounts || {}; 
+           shiftCapacities = response.capacities || { shift1: 5, shift2: 5, shift3: 5, evening: 5 };
+
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('bookingSection').style.display = 'block';
+            document.getElementById('displayName').innerText = currentUser.name;
+            renderShifts();
+        }).catch(err => {
+            currentUser.name = nameInput; currentUser.phone = cleanPhone;
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('bookingSection').style.display = 'block';
+            document.getElementById('displayName').innerText = currentUser.name;
+            renderShifts();
+        });
     }
-    show("prefsClosed", false); show("prefsSection", true);
-    $("prefsWeek").textContent = "(" + D.weekLabel + ")";
 
-    const total = D.config.days.length * D.config.shifts.length;
-    if (D.myPrefs && D.myPrefs.cells.length === total) {
-      cells = D.myPrefs.cells.split(""); wanted = D.myPrefs.wanted;
-      $("savedBanner").innerHTML = `✅ رغباتك لهذا الأسبوع محفوظة مسبقاً. يمكنك تعديلها والحفظ مجدداً حتى ${esc(D.closeText)}.`;
-      show("savedBanner", true);
-    } else {
-      cells = Array(total).fill("A"); wanted = D.config.defaultWanted;
+    function renderShifts() {
+        const container = document.getElementById('shiftsContainer');
+        container.innerHTML = '';
+
+        shiftsConfig.forEach(shift => {
+            const headerClass = shift.type === 'morning' ? 'header-morning' : 'header-evening';
+            const shiftLabel = shift.type === 'morning' ? 'صباحي' : 'مسائي';
+            
+            let isPrimaryActive = selectedPrimary.includes(shift.id);
+            let isBackupActive = selectedBackup.includes(shift.id);
+            let disablePrimary = false;
+            let disableBackup = false;
+            
+           let capacityLimit = (shift.id === 1) ? shiftCapacities.shift1 : 
+                                (shift.id === 2) ? shiftCapacities.shift2 : 
+                                (shift.id === 3) ? shiftCapacities.shift3 : 
+                                shiftCapacities.evening;
+            let bookedCount = currentShiftCounts[shift.id] || 0;
+            let isFull = (bookedCount >= capacityLimit);
+            
+            // 🌟 تقييد الاحتياطي (1 فقط للصباحي) 🌟
+            let backupBooked = currentBackupCounts[shift.id] || 0;
+            let isBackupFull = (shift.type === 'morning' && backupBooked >= 1);
+            
+            if (!isPrimaryActive && isFull) disablePrimary = true;
+            if (!isPrimaryActive && selectedPrimary.length >= 2) disablePrimary = true;
+            
+            selectedPrimary.forEach(sId => {
+                if (Math.abs(sId - shift.id) === 1) disablePrimary = true;
+            });
+            if (!isPrimaryActive && shift.id === 1 && selectedPrimary.includes(6)) disablePrimary = true;
+            if (!isPrimaryActive && shift.id === 6 && selectedPrimary.includes(1)) disablePrimary = true;
+            
+            if (isBackupActive) disablePrimary = true;
+            if (isPrimaryActive) disableBackup = true;
+            if (!isBackupActive && isBackupFull) disableBackup = true; // إغلاق زر الاحتياطي
+
+            let card = document.createElement('div');
+            card.className = 'shift-card';
+            
+            let btnText = isPrimaryActive ? '✅ تم الاختيار' : (isFull ? '🚫 مكتمل' : 'اختيار كـ أساسي');
+            let btnTextBackup = isBackupActive ? '🛡️ احتياطي' : (isBackupFull ? '🚫 اكتفى' : 'اختيار كـ احتياطي');
+            
+            let buttonsHTML = `<button class="btn-shift ${isPrimaryActive ? 'active-primary' : ''} ${disablePrimary ? 'disabled' : ''}" onclick="togglePrimary(${shift.id})" ${disablePrimary ? 'disabled' : ''}>${btnText}</button>`;
+            
+            if (shift.needsBackup) {
+                buttonsHTML += `<button class="btn-shift ${isBackupActive ? 'active-backup' : ''} ${disableBackup ? 'disabled' : ''}" onclick="toggleBackup(${shift.id})" ${disableBackup ? 'disabled' : ''}>${btnTextBackup}</button>`;
+            }
+
+            card.innerHTML = `
+                <div class="shift-header ${headerClass}">
+                    الفترة ${shift.id} (${shiftLabel})<br>
+                    <small dir="ltr">${shift.time}</small>
+                </div>
+                <div style="text-align: center; font-size: 12px; color: #7f8c8d; margin-bottom: 5px;">
+                   المقاعد المحجوزة: ${bookedCount} / ${capacityLimit}
+                </div>
+                <div class="action-buttons">
+                    ${buttonsHTML}
+                </div>
+            `;
+            container.appendChild(card);
+        });
     }
-    wanted = Math.min(D.config.maxShifts, Math.max(D.config.minShifts, wanted));
-    show("lastBtn", !!(D.lastPrefs && D.lastPrefs.cells.length === total));
-    applyBlocks();
-    renderGrid();
-  }
 
-  function idx(d, s) { return d * D.config.shifts.length + (s - 1); }
-  const blocked = i => D.blocks[i] !== "-";
-  function applyBlocks() { cells = cells.map((c, i) => blocked(i) ? "X" : c); }
-  const freeX = () => cells.filter((c, i) => c === "X" && !blocked(i)).length;
-
-  function renderGrid() {
-    $("wantedVal").textContent = wanted;
-    const xCount = freeX();
-    const max = D.config.maxUnavailable;
-    $("xCounter").textContent = `خانات (غير متاح): ${xCount} من ${max} مسموحة`;
-    $("xCounter").className = "counter" + (xCount > max ? " over" : "");
-
-    $("daysContainer").innerHTML = D.config.days.map((_, d) => {
-      const free = D.config.shifts.filter(s => !blocked(idx(d, s.id)));
-      const onLeave = D.config.shifts.every(s => D.blocks[idx(d, s.id)] === "L");
-      const allX = free.length > 0 && free.every(s => cells[idx(d, s.id)] === "X");
-      const btns = D.config.shifts.map(s => {
-        const i = idx(d, s.id), mid = D.config.midday.includes(s.id) ? `<span class="tag-mid">ظهر</span>` : "";
-        if (blocked(i)) {
-          const lbl = D.blocks[i] === "L" ? "🏖️ إجازة" : "🔒 قيد ثابت";
-          return `<button class="cell s-${D.blocks[i]}" disabled>${lbl} <b>الفترة ${s.id} ${mid}</b><small>${esc(s.time)}</small></button>`;
-        }
-        const st = cells[i];
-        const icon = st === "P" ? "✅" : st === "X" ? "❌" : "⚪";
-        return `<button class="cell s-${st}" onclick="cycle(${d},${s.id})">${icon} <b>الفترة ${s.id} ${mid}</b><small>${esc(s.time)}</small></button>`;
-      }).join("");
-      const dayBtn = onLeave ? `<span style="font-size: 12px; color: var(--muted);">🏖️ إجازة معتمدة</span>`
-        : free.length ? `<button onclick="toggleDayOff(${d})">${allX ? "↩️ إلغاء الإجازة" : "🏖️ إجازة اليوم"}</button>` : "";
-      return `<div class="day"><div class="day-head"><span>${esc(D.dayLabels[d])}</span>${dayBtn}</div>
-        <div class="cells">${btns}</div></div>`;
-    }).join("");
-  }
-
-  function cycle(d, s) { const i = idx(d, s); if (blocked(i)) return; cells[i] = NEXT[cells[i]]; show("savedBanner", false); renderGrid(); }
-  function toggleDayOff(d) {
-    const free = D.config.shifts.filter(s => !blocked(idx(d, s.id)));
-    const allX = free.every(s => cells[idx(d, s.id)] === "X");
-    free.forEach(s => cells[idx(d, s.id)] = allX ? "A" : "X");
-    renderGrid();
-  }
-  function changeWanted(n) { wanted = Math.min(D.config.maxShifts, Math.max(D.config.minShifts, wanted + n)); renderGrid(); }
-  function useLast() {
-    cells = D.lastPrefs.cells.split("");
-    wanted = Math.min(D.config.maxShifts, Math.max(D.config.minShifts, D.lastPrefs.wanted));
-    applyBlocks(); renderGrid(); setMsg("saveMsg", "تم نسخ رغباتك السابقة، اضغط حفظ للتأكيد.", true);
-  }
-  function resetAll() { cells = cells.map(() => "A"); applyBlocks(); renderGrid(); }
-
-  async function savePrefs() {
-    const xCount = freeX();
-    if (xCount > D.config.maxUnavailable) return setMsg("saveMsg", `عدد خانات (غير متاح) أكثر من المسموح (${D.config.maxUnavailable}).`);
-    const avail = cells.filter(c => c !== "X").length;
-    if (avail < wanted) return setMsg("saveMsg", "عدد الفترات المتاحة أقل من عدد المناوبات التي طلبتها.");
-
-    $("saveBtn").disabled = true; setMsg("saveMsg", "⏳ جاري الحفظ...", true);
-    try {
-      const r = await api("savePreferences", {}, { phone, week: D.week, wanted, cells: cells.join("") });
-      if (r.status === "success") {
-        setMsg("saveMsg", "✅ " + r.message, true);
-        D.myPrefs = { wanted, cells: cells.join("") };
-      } else {
-        setMsg("saveMsg", "⚠️ " + (r.message || "لم يتم الحفظ."));
-      }
-    } catch (e) {
-      setMsg("saveMsg", "❌ لم يتم الحفظ بسبب مشكلة في الاتصال. حاول مرة أخرى.");
-    } finally { $("saveBtn").disabled = false; }
-  }
-
-  // ---------- القيود والإجازات ----------
-  let consCells = [];
-  function fmtDate(s) { const p = String(s || "").split("-"); return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : s; }
-  function consSummary(c) {
-    const S = D.config.shifts.length;
-    return D.config.days.map((day, d) => {
-      const off = D.config.shifts.filter(s => c[d * S + s.id - 1] === "X").map(s => s.id);
-      return off.length ? `${day}: ${off.length === S ? "اليوم كامل" : "ف" + off.join("، ف")}` : "";
-    }).filter(Boolean).join(" · ");
-  }
-
-  function renderRequests() {
-    let h = "";
-    if (D.constraint) h += `<div class="req-row"><span>📚 <b>قيدك الثابت المعتمد:</b> ${esc(consSummary(D.constraint.cells))}<br><small>${esc(D.constraint.reason)}</small></span><span class="st st-ok">معتمد</span></div>`;
-    D.requests.forEach(r => {
-      const pending = r.status === "بانتظار";
-      const what = r.type === "إجازة" ? `🏖️ إجازة من ${fmtDate(r.from)} إلى ${fmtDate(r.to)}` : `📚 طلب قيد ثابت: ${esc(consSummary(r.cells))}`;
-      h += `<div class="req-row"><span>${what}<br><small>${esc(r.reason)}</small></span>
-        <span class="st ${pending ? "st-wait" : "st-ok"}">${pending ? "⏳ بانتظار الإدارة" : "✅ معتمدة"}
-        ${pending ? `<br><button class="btn-light" style="padding: 3px 8px; margin-top: 4px;" onclick="cancelReq('${esc(r.id)}')">إلغاء</button>` : ""}</span></div>`;
-    });
-    $("myRequests").innerHTML = h || `<div style="color: var(--muted); font-size: 13px;">لا توجد قيود أو إجازات. إذا كان لديك التزام ثابت (دراسة أو عمل) أو ستغيب فترة، أرسل طلباً للإدارة.</div>`;
-  }
-
-  function openForm(id) {
-    ["consForm", "leaveForm"].forEach(f => show(f, f === id && $(f).classList.contains("hidden")));
-    if (id === "consForm") {
-      consCells = (D.constraint ? D.constraint.cells : "-".repeat(D.config.days.length * D.config.shifts.length)).split("");
-      renderConsGrid();
-    } else {
-      $("leaveFrom").min = D.today; $("leaveTo").min = D.today;
+    function togglePrimary(id) {
+        if (selectedPrimary.includes(id)) selectedPrimary = selectedPrimary.filter(s => s !== id);
+        else selectedPrimary.push(id);
+        renderShifts();
     }
-  }
-  function renderConsGrid() {
-    const S = D.config.shifts;
-    $("consGrid").innerHTML = `<tr><th></th>${S.map(s => `<th>ف${s.id}</th>`).join("")}</tr>` +
-      D.config.days.map((day, d) => `<tr><th style="white-space: nowrap;">${esc(day)}</th>${S.map(s => {
-        const i = d * S.length + s.id - 1, on = consCells[i] === "X";
-        return `<td><button class="${on ? "on" : ""}" onclick="consToggle(${i})">${on ? "❌" : "·"}</button></td>`;
-      }).join("")}</tr>`).join("");
-  }
-  function consToggle(i) { consCells[i] = consCells[i] === "X" ? "-" : "X"; renderConsGrid(); }
-  function consColumn(ids) {
-    const S = D.config.shifts.length;
-    const all = D.config.days.every((_, d) => ids.every(s => consCells[d * S + s - 1] === "X"));
-    D.config.days.forEach((_, d) => ids.forEach(s => consCells[d * S + s - 1] = all ? "-" : "X"));
-    renderConsGrid();
-  }
-  function consClear() { consCells = consCells.map(() => "-"); renderConsGrid(); }
-
-  async function reloadRequests() {
-    try { const r = await api("login", { phone }); if (r.status === "success") { D.requests = r.requests; D.constraint = r.constraint; renderRequests(); } } catch (e) {}
-  }
-  async function postReq(action, body, msgId) {
-    setMsg(msgId, "⏳ جاري الإرسال...", true);
-    try {
-      const r = await api(action, {}, Object.assign({ phone }, body));
-      if (r.status !== "success") return setMsg(msgId, "⚠️ " + (r.message || "لم يتم الإرسال."));
-      setMsg(msgId, "✅ " + r.message, true);
-      await reloadRequests();
-      return true;
-    } catch (e) { setMsg(msgId, "❌ لم يتم الإرسال بسبب مشكلة في الاتصال. حاول مرة أخرى."); }
-  }
-  async function sendConstraint() {
-    if (!consCells.includes("X")) return setMsg("consMsg", "حدد فترة واحدة على الأقل.");
-    if ($("consReason").value.trim().length < 3) return setMsg("consMsg", "يرجى كتابة السبب.");
-    if (await postReq("requestConstraint", { cells: consCells.join(""), reason: $("consReason").value.trim() }, "consMsg")) $("consReason").value = "";
-  }
-  async function sendLeave() {
-    const from = $("leaveFrom").value, to = $("leaveTo").value;
-    if (!from || !to) return setMsg("leaveMsg", "يرجى تحديد تاريخ البداية والنهاية.");
-    if (to < from) return setMsg("leaveMsg", "تاريخ النهاية قبل تاريخ البداية.");
-    if ($("leaveReason").value.trim().length < 3) return setMsg("leaveMsg", "يرجى كتابة السبب.");
-    if (await postReq("requestLeave", { from, to, reason: $("leaveReason").value.trim() }, "leaveMsg")) {
-      $("leaveFrom").value = ""; $("leaveTo").value = ""; $("leaveReason").value = "";
+    function toggleBackup(id) {
+        if (selectedBackup.includes(id)) selectedBackup = selectedBackup.filter(s => s !== id);
+        else selectedBackup.push(id);
+        renderShifts();
     }
-  }
-  async function cancelReq(id) {
-    if (!confirm("إلغاء هذا الطلب؟")) return;
-    try {
-      const r = await api("cancelRequest", {}, { phone, id });
-      if (r.status !== "success") alert("⚠️ " + r.message);
-      await reloadRequests();
-    } catch (e) { alert("❌ تعذر الاتصال بالخادم."); }
-  }
 
-  $("phone").addEventListener("keydown", e => { if (e.key === "Enter") login(); });
+    function showSuccessScreen(payload) {
+        let summaryHTML = payload.map(item => `
+            <div style="background: #f9f9f9; border: 1px solid #ddd; border-right: 4px solid ${item.isBackup ? 'var(--backup)' : 'var(--accent)'}; padding: 10px; margin: 8px 0; border-radius: 4px; text-align: right;">
+                <strong>الفترة ${item.shiftId}</strong> ${item.isBackup ? '🛡️ (احتياطي)' : '✅ (أساسي)'}<br><small dir="ltr" style="color: #555;">${item.shiftTime}</small>
+            </div>
+        `).join('');
+
+        document.getElementById('bookingSection').innerHTML = `
+            <div style="text-align:center; padding: 20px;">
+                <h2 style="color: var(--accent);">✅ تم اعتماد حجزك بنجاح!</h2>
+                <p>شكراً لك كابتن <strong>${currentUser.name}</strong>، فتراتك المسجلة ليوم غد هي:</p>
+                <div style="text-align: right; margin-top: 15px;">${summaryHTML}</div>
+                <div style="margin-top: 25px; padding: 10px; background: #e8f8f5; border-radius: 5px; color: var(--accent); font-size: 13px; font-weight: bold;">🔒 تم حفظ حجزك في النظام ولن تتمكن من إرسال حجز آخر ليوم غد منعاً للتكرار. نتمنى لك يوماً موفقاً!</div>
+            </div>`;
+    }
+
+    function submitBooking() {
+        if (selectedPrimary.length === 0 && selectedBackup.length === 0) return alert("⚠️ يرجى اختيار فترة واحدة على الأقل قبل التأكيد.");
+        
+        const btn = document.getElementById('submitBtn');
+        const loader = document.getElementById('loader');
+        btn.style.display = 'none'; loader.style.display = 'block';
+
+        let payload = [];
+        selectedPrimary.forEach(sId => { const shiftData = shiftsConfig.find(s => s.id === sId); payload.push({ name: currentUser.name, phone: currentUser.phone, shiftId: sId, shiftTime: shiftData.time, isBackup: false }); });
+        selectedBackup.forEach(sId => { const shiftData = shiftsConfig.find(s => s.id === sId); payload.push({ name: currentUser.name, phone: currentUser.phone, shiftId: sId, shiftTime: shiftData.time, isBackup: true }); });
+
+        fetch(WEB_APP_URL + "?action=addBooking", { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "closed") {
+                alert("🚫 " + data.message);
+                document.getElementById('bookingSection').style.display = 'none'; document.getElementById('closedSection').style.display = 'flex';
+            } 
+            else if (data.status === "error") {
+                alert("⚠️ " + data.message); window.location.reload(); 
+            } else { showSuccessScreen(payload); }
+        }).catch(error => { showSuccessScreen(payload); });
+    }
 </script>
 </body>
 </html>
