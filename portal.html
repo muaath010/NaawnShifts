@@ -56,6 +56,21 @@
   .s-A { background: #ecf0f1; color: #34495e; }
   .s-P { background: var(--accent); color: #fff; border-color: #1e8449; }
   .s-X { background: #fdedec; color: #922b21; border-color: var(--danger); text-decoration: line-through; }
+  .s-C, .s-L { background: #eceff1; color: #78909c; border-color: #cfd8dc; cursor: not-allowed; }
+  .s-L { background: #eaf2f8; color: #5d6d7e; }
+  .req-box { border: 1px dashed #bdc3c7; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+  .req-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; margin: 6px 0; background: #f8f9fa; border-radius: 6px; font-size: 13px; }
+  .req-row .st { font-weight: bold; white-space: nowrap; }
+  .st-wait { color: #b9770e; } .st-ok { color: var(--accent); }
+  .form-box { background: #fbfcfc; border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-top: 10px; }
+  .form-box label { display: block; font-size: 13px; margin: 8px 0 4px; font-weight: bold; }
+  .form-box input[type=date], .form-box textarea { width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-family: inherit; font-size: 15px; text-align: right; }
+  .quick { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+  .quick button { padding: 6px 9px; font-size: 12px; background: #ecf0f1; color: var(--primary); }
+  .tbl-grid { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .tbl-grid th, .tbl-grid td { padding: 3px; text-align: center; }
+  .tbl-grid button { width: 100%; padding: 8px 0; font-size: 12px; background: #ecf0f1; color: #34495e; }
+  .tbl-grid button.on { background: #fdedec; color: #922b21; border: 2px solid var(--danger); }
   .tag-mid { font-size: 10px; background: var(--midday); color: #fff; border-radius: 4px; padding: 0 4px; margin-right: 3px; text-decoration: none; display: inline-block; }
   @media (max-width: 360px) { .cells { grid-template-columns: repeat(2, 1fr); } }
 </style>
@@ -80,6 +95,42 @@
     <div class="banner b-ok">أهلاً كابتن <b id="userName"></b> 👋</div>
 
     <div id="mySchedules"></div>
+
+    <!-- الطلبات الخاصة: قيد ثابت أو إجازة (تعتمدها الإدارة) -->
+    <div class="req-box">
+      <h2 style="margin-top: 0;">📌 القيود والإجازات</h2>
+      <div id="myRequests"></div>
+      <div class="tools" style="margin: 8px 0 0;">
+        <button class="btn-light" onclick="openForm('consForm')">📚 طلب قيد ثابت (دراسة / عمل)</button>
+        <button class="btn-light" onclick="openForm('leaveForm')">🏖️ طلب إجازة</button>
+      </div>
+
+      <div id="consForm" class="form-box hidden">
+        <div class="banner b-info" style="margin-bottom: 8px;">حدد الفترات التي <b>لا تستطيع العمل فيها أبداً</b> بسبب التزام ثابت. بعد اعتماد الإدارة يُطبَّق القيد تلقائياً كل أسبوع.</div>
+        <div class="quick">
+          <button onclick="consColumn([1])">لا صباح (ف1)</button>
+          <button onclick="consColumn([2,3])">لا ظهر (ف2، ف3)</button>
+          <button onclick="consColumn([4,5,6])">لا مساء (ف4–ف6)</button>
+          <button onclick="consClear()">مسح</button>
+        </div>
+        <div style="overflow-x: auto;"><table class="tbl-grid" id="consGrid"></table></div>
+        <label for="consReason">السبب</label>
+        <textarea id="consReason" rows="2" placeholder="مثال: دراسة جامعية من الأحد إلى الخميس صباحاً"></textarea>
+        <button class="btn" onclick="sendConstraint()">إرسال الطلب للإدارة</button>
+        <div id="consMsg" class="msg"></div>
+      </div>
+
+      <div id="leaveForm" class="form-box hidden">
+        <label for="leaveFrom">من تاريخ</label>
+        <input type="date" id="leaveFrom">
+        <label for="leaveTo">إلى تاريخ</label>
+        <input type="date" id="leaveTo">
+        <label for="leaveReason">السبب</label>
+        <textarea id="leaveReason" rows="2" placeholder="مثال: سفر، امتحانات، ظرف عائلي"></textarea>
+        <button class="btn" onclick="sendLeave()">إرسال الطلب للإدارة</button>
+        <div id="leaveMsg" class="msg"></div>
+      </div>
+    </div>
 
     <div id="prefsClosed" class="banner b-closed hidden"></div>
 
@@ -190,10 +241,17 @@
       html += `<div class="sched-card"><h3>${title} — ${esc(s.weekLabel)}</h3>${body}</div>`;
     });
     $("mySchedules").innerHTML = html;
+    renderRequests();
 
     if (!D.open) {
       show("prefsSection", false); show("prefsClosed", true);
       $("prefsClosed").innerHTML = `🔒 إدخال رغبات الأسبوع القادم مغلق الآن.<br>أوقات الإدخال: <b>${esc(D.windowText)}</b>`;
+      return;
+    }
+    if (D.blocks.indexOf("-") === -1) {
+      show("prefsSection", false); show("prefsClosed", true);
+      $("prefsClosed").className = "banner b-ok";
+      $("prefsClosed").innerHTML = `🏖️ لديك إجازة معتمدة طوال أسبوع ${esc(D.weekLabel)}، لا حاجة لإدخال رغبات.`;
       return;
     }
     show("prefsClosed", false); show("prefsSection", true);
@@ -209,48 +267,60 @@
     }
     wanted = Math.min(D.config.maxShifts, Math.max(D.config.minShifts, wanted));
     show("lastBtn", !!(D.lastPrefs && D.lastPrefs.cells.length === total));
+    applyBlocks();
     renderGrid();
   }
 
   function idx(d, s) { return d * D.config.shifts.length + (s - 1); }
+  const blocked = i => D.blocks[i] !== "-";
+  function applyBlocks() { cells = cells.map((c, i) => blocked(i) ? "X" : c); }
+  const freeX = () => cells.filter((c, i) => c === "X" && !blocked(i)).length;
 
   function renderGrid() {
     $("wantedVal").textContent = wanted;
-    const xCount = cells.filter(c => c === "X").length;
+    const xCount = freeX();
     const max = D.config.maxUnavailable;
     $("xCounter").textContent = `خانات (غير متاح): ${xCount} من ${max} مسموحة`;
     $("xCounter").className = "counter" + (xCount > max ? " over" : "");
 
     $("daysContainer").innerHTML = D.config.days.map((_, d) => {
-      const allX = D.config.shifts.every(s => cells[idx(d, s.id)] === "X");
+      const free = D.config.shifts.filter(s => !blocked(idx(d, s.id)));
+      const onLeave = D.config.shifts.every(s => D.blocks[idx(d, s.id)] === "L");
+      const allX = free.length > 0 && free.every(s => cells[idx(d, s.id)] === "X");
       const btns = D.config.shifts.map(s => {
-        const st = cells[idx(d, s.id)];
+        const i = idx(d, s.id), mid = D.config.midday.includes(s.id) ? `<span class="tag-mid">ظهر</span>` : "";
+        if (blocked(i)) {
+          const lbl = D.blocks[i] === "L" ? "🏖️ إجازة" : "🔒 قيد ثابت";
+          return `<button class="cell s-${D.blocks[i]}" disabled>${lbl} <b>الفترة ${s.id} ${mid}</b><small>${esc(s.time)}</small></button>`;
+        }
+        const st = cells[i];
         const icon = st === "P" ? "✅" : st === "X" ? "❌" : "⚪";
-        const mid = D.config.midday.includes(s.id) ? `<span class="tag-mid">ظهر</span>` : "";
         return `<button class="cell s-${st}" onclick="cycle(${d},${s.id})">${icon} <b>الفترة ${s.id} ${mid}</b><small>${esc(s.time)}</small></button>`;
       }).join("");
-      return `<div class="day"><div class="day-head"><span>${esc(D.dayLabels[d])}</span>
-        <button onclick="toggleDayOff(${d})">${allX ? "↩️ إلغاء الإجازة" : "🏖️ إجازة اليوم"}</button></div>
+      const dayBtn = onLeave ? `<span style="font-size: 12px; color: var(--muted);">🏖️ إجازة معتمدة</span>`
+        : free.length ? `<button onclick="toggleDayOff(${d})">${allX ? "↩️ إلغاء الإجازة" : "🏖️ إجازة اليوم"}</button>` : "";
+      return `<div class="day"><div class="day-head"><span>${esc(D.dayLabels[d])}</span>${dayBtn}</div>
         <div class="cells">${btns}</div></div>`;
     }).join("");
   }
 
-  function cycle(d, s) { const i = idx(d, s); cells[i] = NEXT[cells[i]]; show("savedBanner", false); renderGrid(); }
+  function cycle(d, s) { const i = idx(d, s); if (blocked(i)) return; cells[i] = NEXT[cells[i]]; show("savedBanner", false); renderGrid(); }
   function toggleDayOff(d) {
-    const allX = D.config.shifts.every(s => cells[idx(d, s.id)] === "X");
-    D.config.shifts.forEach(s => cells[idx(d, s.id)] = allX ? "A" : "X");
+    const free = D.config.shifts.filter(s => !blocked(idx(d, s.id)));
+    const allX = free.every(s => cells[idx(d, s.id)] === "X");
+    free.forEach(s => cells[idx(d, s.id)] = allX ? "A" : "X");
     renderGrid();
   }
   function changeWanted(n) { wanted = Math.min(D.config.maxShifts, Math.max(D.config.minShifts, wanted + n)); renderGrid(); }
   function useLast() {
     cells = D.lastPrefs.cells.split("");
     wanted = Math.min(D.config.maxShifts, Math.max(D.config.minShifts, D.lastPrefs.wanted));
-    renderGrid(); setMsg("saveMsg", "تم نسخ رغباتك السابقة، اضغط حفظ للتأكيد.", true);
+    applyBlocks(); renderGrid(); setMsg("saveMsg", "تم نسخ رغباتك السابقة، اضغط حفظ للتأكيد.", true);
   }
-  function resetAll() { cells = cells.map(() => "A"); renderGrid(); }
+  function resetAll() { cells = cells.map(() => "A"); applyBlocks(); renderGrid(); }
 
   async function savePrefs() {
-    const xCount = cells.filter(c => c === "X").length;
+    const xCount = freeX();
     if (xCount > D.config.maxUnavailable) return setMsg("saveMsg", `عدد خانات (غير متاح) أكثر من المسموح (${D.config.maxUnavailable}).`);
     const avail = cells.filter(c => c !== "X").length;
     if (avail < wanted) return setMsg("saveMsg", "عدد الفترات المتاحة أقل من عدد المناوبات التي طلبتها.");
@@ -267,6 +337,92 @@
     } catch (e) {
       setMsg("saveMsg", "❌ لم يتم الحفظ بسبب مشكلة في الاتصال. حاول مرة أخرى.");
     } finally { $("saveBtn").disabled = false; }
+  }
+
+  // ---------- القيود والإجازات ----------
+  let consCells = [];
+  function fmtDate(s) { const p = String(s || "").split("-"); return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : s; }
+  function consSummary(c) {
+    const S = D.config.shifts.length;
+    return D.config.days.map((day, d) => {
+      const off = D.config.shifts.filter(s => c[d * S + s.id - 1] === "X").map(s => s.id);
+      return off.length ? `${day}: ${off.length === S ? "اليوم كامل" : "ف" + off.join("، ف")}` : "";
+    }).filter(Boolean).join(" · ");
+  }
+
+  function renderRequests() {
+    let h = "";
+    if (D.constraint) h += `<div class="req-row"><span>📚 <b>قيدك الثابت المعتمد:</b> ${esc(consSummary(D.constraint.cells))}<br><small>${esc(D.constraint.reason)}</small></span><span class="st st-ok">معتمد</span></div>`;
+    D.requests.forEach(r => {
+      const pending = r.status === "بانتظار";
+      const what = r.type === "إجازة" ? `🏖️ إجازة من ${fmtDate(r.from)} إلى ${fmtDate(r.to)}` : `📚 طلب قيد ثابت: ${esc(consSummary(r.cells))}`;
+      h += `<div class="req-row"><span>${what}<br><small>${esc(r.reason)}</small></span>
+        <span class="st ${pending ? "st-wait" : "st-ok"}">${pending ? "⏳ بانتظار الإدارة" : "✅ معتمدة"}
+        ${pending ? `<br><button class="btn-light" style="padding: 3px 8px; margin-top: 4px;" onclick="cancelReq('${esc(r.id)}')">إلغاء</button>` : ""}</span></div>`;
+    });
+    $("myRequests").innerHTML = h || `<div style="color: var(--muted); font-size: 13px;">لا توجد قيود أو إجازات. إذا كان لديك التزام ثابت (دراسة أو عمل) أو ستغيب فترة، أرسل طلباً للإدارة.</div>`;
+  }
+
+  function openForm(id) {
+    ["consForm", "leaveForm"].forEach(f => show(f, f === id && $(f).classList.contains("hidden")));
+    if (id === "consForm") {
+      consCells = (D.constraint ? D.constraint.cells : "-".repeat(D.config.days.length * D.config.shifts.length)).split("");
+      renderConsGrid();
+    } else {
+      $("leaveFrom").min = D.today; $("leaveTo").min = D.today;
+    }
+  }
+  function renderConsGrid() {
+    const S = D.config.shifts;
+    $("consGrid").innerHTML = `<tr><th></th>${S.map(s => `<th>ف${s.id}</th>`).join("")}</tr>` +
+      D.config.days.map((day, d) => `<tr><th style="white-space: nowrap;">${esc(day)}</th>${S.map(s => {
+        const i = d * S.length + s.id - 1, on = consCells[i] === "X";
+        return `<td><button class="${on ? "on" : ""}" onclick="consToggle(${i})">${on ? "❌" : "·"}</button></td>`;
+      }).join("")}</tr>`).join("");
+  }
+  function consToggle(i) { consCells[i] = consCells[i] === "X" ? "-" : "X"; renderConsGrid(); }
+  function consColumn(ids) {
+    const S = D.config.shifts.length;
+    const all = D.config.days.every((_, d) => ids.every(s => consCells[d * S + s - 1] === "X"));
+    D.config.days.forEach((_, d) => ids.forEach(s => consCells[d * S + s - 1] = all ? "-" : "X"));
+    renderConsGrid();
+  }
+  function consClear() { consCells = consCells.map(() => "-"); renderConsGrid(); }
+
+  async function reloadRequests() {
+    try { const r = await api("login", { phone }); if (r.status === "success") { D.requests = r.requests; D.constraint = r.constraint; renderRequests(); } } catch (e) {}
+  }
+  async function postReq(action, body, msgId) {
+    setMsg(msgId, "⏳ جاري الإرسال...", true);
+    try {
+      const r = await api(action, {}, Object.assign({ phone }, body));
+      if (r.status !== "success") return setMsg(msgId, "⚠️ " + (r.message || "لم يتم الإرسال."));
+      setMsg(msgId, "✅ " + r.message, true);
+      await reloadRequests();
+      return true;
+    } catch (e) { setMsg(msgId, "❌ لم يتم الإرسال بسبب مشكلة في الاتصال. حاول مرة أخرى."); }
+  }
+  async function sendConstraint() {
+    if (!consCells.includes("X")) return setMsg("consMsg", "حدد فترة واحدة على الأقل.");
+    if ($("consReason").value.trim().length < 3) return setMsg("consMsg", "يرجى كتابة السبب.");
+    if (await postReq("requestConstraint", { cells: consCells.join(""), reason: $("consReason").value.trim() }, "consMsg")) $("consReason").value = "";
+  }
+  async function sendLeave() {
+    const from = $("leaveFrom").value, to = $("leaveTo").value;
+    if (!from || !to) return setMsg("leaveMsg", "يرجى تحديد تاريخ البداية والنهاية.");
+    if (to < from) return setMsg("leaveMsg", "تاريخ النهاية قبل تاريخ البداية.");
+    if ($("leaveReason").value.trim().length < 3) return setMsg("leaveMsg", "يرجى كتابة السبب.");
+    if (await postReq("requestLeave", { from, to, reason: $("leaveReason").value.trim() }, "leaveMsg")) {
+      $("leaveFrom").value = ""; $("leaveTo").value = ""; $("leaveReason").value = "";
+    }
+  }
+  async function cancelReq(id) {
+    if (!confirm("إلغاء هذا الطلب؟")) return;
+    try {
+      const r = await api("cancelRequest", {}, { phone, id });
+      if (r.status !== "success") alert("⚠️ " + r.message);
+      await reloadRequests();
+    } catch (e) { alert("❌ تعذر الاتصال بالخادم."); }
   }
 
   $("phone").addEventListener("keydown", e => { if (e.key === "Enter") login(); });
