@@ -39,6 +39,9 @@
   .stat b { display: block; font-size: 26px; } .stat span { font-size: 13px; color: var(--muted); }
   .stat.bad b { color: var(--danger); } .stat.good b { color: var(--accent); }
 
+  .req { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; background: #f8f9fa; border-right: 4px solid var(--warning); border-radius: 6px; padding: 9px 11px; margin: 6px 0; font-size: 13px; }
+  .req.ok { border-right-color: var(--accent); }
+  .req .btns { display: flex; gap: 6px; } .req .btns button { padding: 6px 10px; font-size: 12px; }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; }
   .chip { background: #fef5e7; border: 1px solid #f8c471; border-radius: 6px; padding: 5px 8px; font-size: 13px; display: inline-flex; gap: 6px; align-items: center; }
 
@@ -116,6 +119,14 @@
       <p style="font-size: 12px; color: var(--muted); margin: 10px 0 0;">
         الدورة التلقائية: تفتح البوابة <b id="cycleText"></b> ← تذكير لمن لم يدخل رغباته قبل الإغلاق ← توزيع آلي عند الإغلاق وتصلك رسالة ← تراجع هنا ثم تضغط (اعتماد وإرسال) ← رسالة واحدة لكل مندوب بجدوله الأسبوعي.
       </p>
+    </div>
+
+    <div class="panel" id="reqPanel">
+      <h3>📥 طلبات القيود والإجازات <span id="reqCount"></span></h3>
+      <p style="font-size: 12px; color: var(--muted); margin-top: 0;">يرسلها المناديب من البوابة. عند الاعتماد يُطبَّق القيد أو الإجازة تلقائياً في التوزيع، ويصل للمندوب إشعار بالقرار.</p>
+      <div id="reqPending"></div>
+      <details style="margin-top: 10px;"><summary style="cursor: pointer; font-weight: bold; font-size: 14px;">📚 القيود الثابتة المعتمدة <span id="consCount"></span></summary><div id="reqCons"></div></details>
+      <details style="margin-top: 8px;"><summary style="cursor: pointer; font-weight: bold; font-size: 14px;">🏖️ الإجازات المعتمدة الحالية والقادمة <span id="leaveCount"></span></summary><div id="reqLeaves"></div></details>
     </div>
 
     <div class="panel" id="nonSubPanel">
@@ -243,15 +254,23 @@
   const needOf = (d, s) => data.caps[d][s - 1];
   const backupNeedOf = (d, s) => { const i = C().backupShifts.indexOf(s); return i < 0 ? 0 : data.caps[d][6 + i]; };
   const cellIdx = (d, s) => d * C().shifts.length + (s - 1);
-  function prefOf(phone, d, s) { const p = data.prefs[phone]; return p && p.cells && p.cells.length === 42 ? p.cells[cellIdx(d, s)] : "?"; }
-  const PREF_TXT = { P: "✅ مفضّل", A: "⚪ ممكن", X: "❌ غير متاح", "?": "❔ لم يدخل" };
+  function prefOf(phone, d, s) {
+    const b = data.blocks[phone];
+    if (b && b[cellIdx(d, s)] !== "-") return b[cellIdx(d, s)];        // C قيد ثابت / L إجازة
+    const p = data.prefs[phone]; return p && p.cells && p.cells.length === 42 ? p.cells[cellIdx(d, s)] : "?";
+  }
+  const PREF_TXT = { P: "✅ مفضّل", A: "⚪ ممكن", X: "❌ غير متاح", "?": "❔ لم يدخل", C: "🔒 قيد ثابت", L: "🏖️ إجازة" };
+  const onFullLeave = phone => { const b = data.blocks[phone]; return !!b && b.indexOf("-") === -1; };
   const activeRoster = () => data.roster.filter(d => d.active);
   const nameOf = phone => { const d = data.roster.find(x => x.phone === phone); return d ? d.name : phone; };
   const primaryCount = phone => sched.filter(i => i.phone === phone && i.role === ROLE_P).length;
 
   function warningsFor(phone, d, s, role, ignoreIndex) {
     const w = [];
-    if (prefOf(phone, d, s) === "X") w.push("المندوب حدد هذه الفترة (غير متاح)");
+    const pf = prefOf(phone, d, s);
+    if (pf === "X") w.push("المندوب حدد هذه الفترة (غير متاح)");
+    if (pf === "C") w.push("لديه قيد ثابت معتمد في هذه الفترة");
+    if (pf === "L") w.push("في إجازة معتمدة هذا اليوم");
     if (role !== ROLE_P) return w;
     const mine = sched.filter((i, k) => k !== ignoreIndex && i.phone === phone && i.role === ROLE_P);
     const today = mine.filter(i => i.day === d).map(i => i.shift);
@@ -264,7 +283,7 @@
   }
 
   // ---------- العرض ----------
-  function renderAll() { renderTop(); renderStats(); renderNonSub(); renderTabs(); renderDay(); renderSummary(); renderCaps(); renderSettings(); renderRoster(); }
+  function renderAll() { renderTop(); renderStats(); renderRequests(); renderNonSub(); renderTabs(); renderDay(); renderSummary(); renderCaps(); renderSettings(); renderRoster(); }
 
   function renderTop() {
     $("weekSel").innerHTML = data.weeks.map(w => `<option value="${w.key}" ${w.key === data.week ? "selected" : ""}>${w.tag ? "(" + w.tag + ") " : ""}${esc(w.label)}</option>`).join("");
@@ -285,7 +304,8 @@
   }
 
   function renderStats() {
-    const act = activeRoster(), submitted = act.filter(d => data.prefs[d.phone]).length;
+    const act = activeRoster().filter(d => !onFullLeave(d.phone)), submitted = act.filter(d => data.prefs[d.phone]).length;
+    const pendingReq = data.requests.pending.length;
     const sh = shortages(), totalNeed = data.caps.reduce((a, r) => a + r.slice(0, 6).reduce((x, y) => x + y, 0), 0);
     const filled = sched.filter(i => i.role === ROLE_P).length;
     const pct = act.length ? Math.round(submitted / act.length * 100) : 0;
@@ -294,12 +314,52 @@
       <div class="stat ${pct >= 80 ? "good" : ""}"><b>${submitted} <small style="font-size: 14px;">(${pct}%)</small></b><span>أدخلوا رغباتهم</span></div>
       <div class="stat ${act.length - submitted ? "bad" : "good"}"><b>${act.length - submitted}</b><span>لم يدخلوا</span></div>
       <div class="stat"><b>${filled} / ${totalNeed}</b><span>مقاعد أساسية مملوءة</span></div>
-      <div class="stat ${sh.length ? "bad" : "good"}"><b>${sh.length}</b><span>فترات ناقصة</span></div>`;
+      <div class="stat ${sh.length ? "bad" : "good"}"><b>${sh.length}</b><span>فترات ناقصة</span></div>
+      <div class="stat ${pendingReq ? "bad" : ""}"><b>${pendingReq}</b><span>طلبات بانتظار الاعتماد</span></div>`;
+  }
+
+  // ---------- الطلبات ----------
+  function fmtDate(s) { const p = String(s || "").split("-"); return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : s; }
+  function consSummary(c) {
+    const S = C().shifts.length;
+    return C().days.map((day, d) => {
+      const off = C().shifts.filter(s => c[d * S + s.id - 1] === "X").map(s => s.id);
+      return off.length ? `${day}: ${off.length === S ? "اليوم كامل" : "ف" + off.join("، ف")}` : "";
+    }).filter(Boolean).join(" · ");
+  }
+  function reqLine(r, buttons, ok) {
+    const what = r.type === "إجازة" ? `🏖️ <b>إجازة</b> من ${fmtDate(r.from)} إلى ${fmtDate(r.to)}` : `📚 <b>قيد ثابت:</b> ${esc(consSummary(r.cells))}`;
+    return `<div class="req ${ok ? "ok" : ""}"><span><b>${esc(r.name)}</b> — ${what}<br><small style="color: var(--muted);">السبب: ${esc(r.reason)}${r.at ? " · " + esc(r.at) : ""}</small></span><span class="btns">${buttons}</span></div>`;
+  }
+  function renderRequests() {
+    const q = data.requests;
+    $("reqCount").textContent = q.pending.length ? `(${q.pending.length} بانتظار)` : "";
+    $("reqPending").innerHTML = q.pending.length
+      ? q.pending.map(r => reqLine(r, `<button class="b-green" onclick="decide('${esc(r.id)}','approve')">✅ اعتماد</button><button class="b-red" onclick="decide('${esc(r.id)}','reject')">✖ رفض</button>`, false)).join("")
+      : `<span style="color: var(--accent); font-weight: bold; font-size: 13px;">لا توجد طلبات جديدة</span>`;
+    $("consCount").textContent = `(${q.constraints.length})`;
+    $("reqCons").innerHTML = q.constraints.map(r => reqLine(r, `<button class="b-gray" onclick="decide('${esc(r.id)}','cancel')">إلغاء القيد</button>`, true)).join("") || `<p style="color: var(--muted); font-size: 13px;">لا توجد</p>`;
+    $("leaveCount").textContent = `(${q.leaves.length})`;
+    $("reqLeaves").innerHTML = q.leaves.map(r => reqLine(r, `<button class="b-gray" onclick="decide('${esc(r.id)}','cancel')">إلغاء الإجازة</button>`, true)).join("") || `<p style="color: var(--muted); font-size: 13px;">لا توجد</p>`;
+  }
+  async function decide(id, decision) {
+    const label = { approve: "اعتماد", reject: "رفض", cancel: "إلغاء" }[decision];
+    let note = "";
+    if (decision !== "approve") { note = prompt(`${label} الطلب — ملاحظة تصل للمندوب (اختياري):`, ""); if (note === null) return; }
+    else if (!confirm("اعتماد هذا الطلب؟ سيُطبَّق في التوزيع القادم ويصل للمندوب إشعار.")) return;
+    await guarded(null, async () => {
+      const r = await apiPost("decideRequest", { id, decision, note });
+      if (r.status !== "success") return alert("⚠️ " + r.message);
+      toast(`✅ تم ${label} الطلب`);
+      if (data.weekStatus !== "none" && decision !== "reject") toast("ℹ️ الجدول الحالي لم يتغير. أعد التوزيع أو عدّله يدوياً إن لزم.");
+      await load(data.week);
+    });
   }
 
   function renderNonSub() {
-    const list = activeRoster().filter(d => !data.prefs[d.phone]);
-    $("nonSubCount").textContent = `(${list.length})`;
+    const list = activeRoster().filter(d => !data.prefs[d.phone] && !onFullLeave(d.phone));
+    const leave = activeRoster().filter(d => onFullLeave(d.phone));
+    $("nonSubCount").textContent = `(${list.length})` + (leave.length ? ` — في إجازة طوال الأسبوع: ${leave.map(d => d.name).join("، ")}` : "");
     $("nonSubList").innerHTML = list.length
       ? list.map(d => `<span class="chip">${esc(d.name)} <a class="b-wa" target="_blank" href="https://wa.me/968${d.phone}?text=${encodeURIComponent("أهلاً " + d.name + "، نرجو إدخال رغباتك لمناوبات الأسبوع القادم في بوابة نعاون قبل الإغلاق.")}">💬</a></span>`).join("")
       : `<span style="color: var(--accent); font-weight: bold;">✅ الجميع أدخلوا رغباتهم</span>`;
@@ -321,7 +381,7 @@
 
   function optionsFor(d, s, role) {
     const inSlot = sched.filter(i => i.day === d && i.shift === s).map(i => i.phone);
-    const order = { P: 0, A: 1, "?": 2, X: 3 };
+    const order = { P: 0, A: 1, "?": 2, X: 3, C: 4, L: 5 };
     return activeRoster().filter(p => !inSlot.includes(p.phone))
       .map(p => ({ p, pref: prefOf(p.phone, d, s), n: primaryCount(p.phone) }))
       .sort((a, b) => (order[a.pref] - order[b.pref]) || (a.n - b.n))
@@ -359,10 +419,11 @@
       const wanted = pr ? pr.wanted : C().defaultWanted;
       return { p, pr, prim: prim.length, back: mine.length - prim.length, mid, wanted };
     }).sort((a, b) => (b.mid + b.p.middayHistory) - (a.mid + a.p.middayHistory))
-      .map(r => `<tr><td>${esc(r.p.name)}</td><td dir="ltr">${r.p.phone}</td><td>${r.pr ? "✅" : "❔"}</td>
+      .map(r => `<tr><td>${esc(r.p.name)}</td><td dir="ltr">${r.p.phone}</td><td>${onFullLeave(r.p.phone) ? "🏖️" : r.pr ? "✅" : "❔"}</td>
         <td>${r.wanted}</td><td style="${r.prim < r.wanted && r.pr ? "color: var(--danger); font-weight: bold;" : ""}">${r.prim}</td>
-        <td>${r.mid}</td><td>${r.p.middayHistory}</td><td>${r.back}</td></tr>`).join("");
-    $("summaryTable").innerHTML = `<tr><th>الاسم</th><th>الرقم</th><th>الرغبات</th><th>المطلوب</th><th>أساسي</th><th>ظهر هذا الأسبوع</th><th>ظهر آخر الأسابيع</th><th>احتياطي</th></tr>${rowsHtml}`;
+        <td>${r.p.middayExempt ? "معفى" : r.mid}</td><td>${r.p.middayHistory}</td><td>${r.back}</td>
+        <td style="font-size: 12px;">${r.p.constraint ? "🔒 " + esc(r.p.constraint) : ""}</td></tr>`).join("");
+    $("summaryTable").innerHTML = `<tr><th>الاسم</th><th>الرقم</th><th>الرغبات</th><th>المطلوب</th><th>أساسي</th><th>ظهر هذا الأسبوع</th><th>ظهر آخر الأسابيع</th><th>احتياطي</th><th>قيد ثابت</th></tr>${rowsHtml}`;
   }
 
   function renderCaps() {
@@ -547,3 +608,4 @@
 </script>
 </body>
 </html>
+ش
